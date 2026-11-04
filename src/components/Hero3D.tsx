@@ -39,7 +39,7 @@ const Hero3D = () => {
                     transition={{
                         repeat: Infinity,
                         ease: 'linear',
-                        duration: 32,
+                        duration: 65,
                     }}
                     className="flex whitespace-nowrap will-change-transform"
                 >
