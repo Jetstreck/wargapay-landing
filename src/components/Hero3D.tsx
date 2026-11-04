@@ -74,7 +74,7 @@ const Hero3D = () => {
                     transition={{ duration: 1.2, ease: "easeOut" }}
                 >
                     <h1
-                        className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight text-[#192414] mb-6 drop-shadow-sm"
+                        className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight text-[#192414] mb-6 drop-shadow-[0_0_12px_rgba(255,255,255,0.7)] drop-shadow-[0_1px_3px_rgba(255,255,255,0.85)]"
                     >
                         TRANSPARANSI RT. TANPA BATAS.
                     </h1>
@@ -86,7 +86,7 @@ const Hero3D = () => {
                     transition={{ delay: 0.6, duration: 1 }}
                 >
                     <h2
-                        className="text-2xl sm:text-3xl md:text-5xl font-black text-[#607C3C] tracking-widest uppercase drop-shadow-sm"
+                        className="text-2xl sm:text-3xl md:text-5xl font-black text-[#607C3C] tracking-widest uppercase drop-shadow-[0_0_10px_rgba(255,255,255,0.7)] drop-shadow-[0_1px_3px_rgba(255,255,255,0.85)]"
                     >
                         SMART WASTE & KEUANGAN WARGA.
                     </h2>
