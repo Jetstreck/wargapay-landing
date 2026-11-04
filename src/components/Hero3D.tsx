@@ -32,16 +32,32 @@ useGLTF.preload(earthGlbUrl);
 const Hero3D = () => {
     return (
         <section id="overview" className="h-screen w-full relative flex items-center justify-center overflow-hidden bg-[#F0F2EB]">
-            {/* Background Decorative Embedded Text Behind Earth (Layer 0) */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden z-0">
+            {/* Background Decorative Embedded Text Behind Earth (Layer 0 - Seamless Left-to-Right Looping Marquee) */}
+            <div className="absolute inset-0 flex items-center pointer-events-none select-none overflow-hidden z-0">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
-                    className="flex whitespace-nowrap"
+                    animate={{ x: ['-50%', '0%'] }}
+                    transition={{
+                        repeat: Infinity,
+                        ease: 'linear',
+                        duration: 32,
+                    }}
+                    className="flex whitespace-nowrap will-change-transform"
                 >
-                    <span className="text-[13vw] sm:text-[15vw] font-black tracking-tighter text-white/35 blur-[3px] uppercase whitespace-nowrap leading-none select-none">
-                        WARGAPAY WARGAPAY
+                    <span
+                        className="text-[13vw] sm:text-[14vw] font-black tracking-tight text-white/50 uppercase whitespace-nowrap leading-none select-none px-6"
+                        style={{
+                            WebkitTextStroke: '1.2px rgba(255, 255, 255, 0.75)',
+                        }}
+                    >
+                        WARGAPAY • WARGAPAY • WARGAPAY • WARGAPAY •
+                    </span>
+                    <span
+                        className="text-[13vw] sm:text-[14vw] font-black tracking-tight text-white/50 uppercase whitespace-nowrap leading-none select-none px-6"
+                        style={{
+                            WebkitTextStroke: '1.2px rgba(255, 255, 255, 0.75)',
+                        }}
+                    >
+                        WARGAPAY • WARGAPAY • WARGAPAY • WARGAPAY •
                     </span>
                 </motion.div>
             </div>
