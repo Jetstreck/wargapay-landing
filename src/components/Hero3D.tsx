@@ -40,7 +40,7 @@ const Hero3D = () => {
                     transition={{ duration: 1.5, ease: "easeOut" }}
                     className="flex whitespace-nowrap"
                 >
-                    <span className="text-[13vw] sm:text-[15vw] font-black tracking-tighter text-white uppercase whitespace-nowrap leading-none select-none drop-shadow-[0_8px_30px_rgba(96,124,60,0.06)]">
+                    <span className="text-[13vw] sm:text-[15vw] font-black tracking-tighter text-white/35 blur-[3px] uppercase whitespace-nowrap leading-none select-none">
                         WARGAPAY WARGAPAY
                     </span>
                 </motion.div>
