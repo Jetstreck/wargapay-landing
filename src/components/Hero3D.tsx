@@ -35,11 +35,9 @@ const Hero3D = () => {
             {/* 3D Scene */}
             <div className="absolute inset-0 z-0">
                 <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
-                    <ambientLight intensity={1.6} />
-                    <directionalLight position={[0, 4, 6]} intensity={2.2} color="#FFFFFF" />
-                    <directionalLight position={[8, 7, 5]} intensity={2.0} color="#FFFFFF" />
-                    <pointLight position={[-8, -4, -3]} intensity={1.2} color="#cbd5e1" />
-                    <pointLight position={[2, -4, 3]} intensity={1.0} color="#8FAF64" />
+                    <ambientLight intensity={0.9} />
+                    <directionalLight position={[6, 5, 5]} intensity={1.7} color="#FFFFFF" />
+                    <directionalLight position={[-4, 2, 4]} intensity={0.6} color="#E8F0E3" />
 
                     <Suspense fallback={null}>
                         <EarthModel />
