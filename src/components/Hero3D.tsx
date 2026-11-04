@@ -1,52 +1,60 @@
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Sphere, MeshDistortMaterial, Stars } from '@react-three/drei';
+import { OrbitControls, useGLTF, Float } from '@react-three/drei';
 import { motion } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, Suspense } from 'react';
 import * as THREE from 'three';
+import earthGlbUrl from '../assets/3d/earth.glb?url';
 
-const AnimatedSphere = () => {
-    const meshRef = useRef<THREE.Mesh>(null);
+const EarthModel = () => {
+    const { scene } = useGLTF(earthGlbUrl);
+    const groupRef = useRef<THREE.Group>(null);
 
     useFrame((state) => {
-        if (meshRef.current) {
-            meshRef.current.rotation.x = state.clock.getElapsedTime() * 0.2;
-            meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.3;
+        if (groupRef.current) {
+            // Earth axial tilt and gentle rotation
+            groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.16;
+            groupRef.current.rotation.x = 0.23; // Realistic ~23.5 degree axial tilt
         }
     });
 
     return (
-        <Sphere args={[1, 100, 200]} scale={2.2} ref={meshRef}>
-            <MeshDistortMaterial
-                color="#607C3C"
-                attach="material"
-                distort={0.4}
-                speed={2}
-                roughness={0.35}
-                metalness={0.25}
-                emissive="#3d5225"
-                emissiveIntensity={0.2}
-            />
-        </Sphere>
+        <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.4}>
+            <group ref={groupRef} scale={0.0125} position={[0, 0, 0]}>
+                <primitive object={scene} />
+            </group>
+        </Float>
     );
 };
+
+// Preload earth.glb asset
+useGLTF.preload(earthGlbUrl);
 
 const Hero3D = () => {
     return (
         <section id="overview" className="h-screen w-full relative flex items-center justify-center overflow-hidden bg-[#F4F6F0]">
             {/* 3D Scene */}
             <div className="absolute inset-0 z-0">
-                <Canvas camera={{ position: [0, 0, 5] }}>
-                    <ambientLight intensity={0.9} />
-                    <pointLight position={[10, 10, 10]} intensity={1.8} color="#85a359" />
-                    <pointLight position={[-10, -10, -10]} intensity={1} color="#cbd5e1" />
-                    <Stars radius={100} depth={50} count={3000} factor={3} saturation={0} fade speed={1} />
-                    <AnimatedSphere />
-                    <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.5} />
+                <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
+                    <ambientLight intensity={1.4} />
+                    <directionalLight position={[8, 6, 6]} intensity={2.8} color="#FFFFFF" />
+                    <pointLight position={[-8, -5, -4]} intensity={1.2} color="#cbd5e1" />
+                    <pointLight position={[2, -4, 3]} intensity={1.0} color="#8FAF64" />
+
+                    <Suspense fallback={null}>
+                        <EarthModel />
+                    </Suspense>
+
+                    <OrbitControls
+                        enableZoom={false}
+                        enablePan={false}
+                        autoRotate
+                        autoRotateSpeed={0.5}
+                    />
                 </Canvas>
             </div>
 
             {/* Overlay Content */}
-            <div className="relative z-10 text-center px-4 pointer-events-none">
+            <div className="relative z-10 text-center px-4 pointer-events-none select-none">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
                     animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
@@ -80,7 +88,7 @@ const Hero3D = () => {
             </div>
 
             {/* Subtle Texture Overlay */}
-            <div className="absolute inset-0 z-20 pointer-events-none opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-repeat mix-blend-multiply"></div>
+            <div className="absolute inset-0 z-20 pointer-events-none opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-repeat mix-blend-multiply" />
         </section>
     );
 };

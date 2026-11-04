@@ -82,8 +82,7 @@ const Navbar = ({ onNavigate, onLoginClick }: NavbarProps) => {
                         className="relative group px-5 py-2 rounded-full text-xs font-bold tracking-wide text-white bg-[#607C3C] hover:bg-[#506832] transition-all duration-300 shadow-[0_4px_16px_rgba(96,124,60,0.25)] hover:shadow-[0_6px_20px_rgba(96,124,60,0.4)] active:scale-95"
                     >
                         <span className="relative z-10 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white/90 animate-pulse"></span>
-                            Login Warga
+                            Sign In
                         </span>
                     </button>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, ArrowLeft, CheckCircle2, ShieldCheck, Phone, Lock, Sparkles, Leaf, Check } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, CheckCircle2, Phone, Lock } from 'lucide-react';
 import logoBrand from '../assets/logo-brand.jpg';
 
 interface LoginPageProps {
