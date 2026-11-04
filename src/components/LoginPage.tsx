@@ -47,9 +47,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
                     src={PEXELS_PHOTO_URL}
                     alt="Tiny small sprout in soft sunlight - Eco WargaPay"
                     onLoad={() => setImageLoaded(true)}
-                    className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-700 ${
-                        imageLoaded ? 'scale-100 opacity-100 blur-0' : 'scale-105 opacity-0 blur-md'
-                    }`}
+                    className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-700 ${imageLoaded ? 'scale-100 opacity-100 blur-0' : 'scale-105 opacity-0 blur-md'
+                        }`}
                 />
 
                 {/* Black filter overlay in front of the image */}
@@ -95,33 +94,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
                 {/* Bottom Headline & Glassmorphism Card */}
                 <div className="relative z-10 pt-8">
                     {/* Eco Tag Badge */}
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/25 text-xs font-semibold text-white mb-4 shadow-sm">
-                        <Leaf className="w-3.5 h-3.5 text-[#A4C978]" />
-                        <span>Smart Waste & Eco-Residential Cluster</span>
-                    </div>
-
                     <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-md">
                         Selamat Datang kembali di WargaPay
                     </h2>
                     <p className="mt-2.5 text-xs sm:text-sm text-white/90 leading-relaxed max-w-lg drop-shadow-sm font-medium">
                         Transparansi Keuangan RT & Sanitasi Lingkungan dalam Satu Platform.
                     </p>
-
-                    {/* Micro Features Pill Bar */}
-                    <div className="mt-5 hidden sm:flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-[11px] text-white/90">
-                            <Check className="w-3.5 h-3.5 text-[#A4C978]" />
-                            <span>Kas RT Transparan</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-[11px] text-white/90">
-                            <Check className="w-3.5 h-3.5 text-[#A4C978]" />
-                            <span>Jadwal Sampah Otomatis</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-[11px] text-white/90">
-                            <Sparkles className="w-3.5 h-3.5 text-[#A4C978]" />
-                            <span>Notifikasi WhatsApp Realtime</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -137,10 +115,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
                         <ArrowLeft className="w-3.5 h-3.5 text-[#607C3C]" />
                         <span>Kembali ke Beranda</span>
                     </button>
-
-                    <span className="text-xs font-semibold text-[#8C9E85]">
-                        Bantuan Warga: <span className="text-[#607C3C] font-bold">08:00 - 20:00</span>
-                    </span>
                 </div>
 
                 {/* Centered Minimalist Form Container */}
@@ -164,12 +138,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
 
                     {/* Form Header */}
                     <div className="mb-8">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="w-2 h-2 rounded-full bg-[#607C3C]" />
-                            <span className="text-[11px] uppercase tracking-wider font-extrabold text-[#607C3C]">
-                                Akses Portal Warga
-                            </span>
-                        </div>
                         <h1 className="text-3xl sm:text-4xl font-black text-[#1A2518] tracking-tight">
                             Masuk ke Akun Warga
                         </h1>
@@ -287,12 +255,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
                             </button>
                         </div>
                     </form>
-
-                    {/* Security Notice Badge */}
-                    <div className="mt-8 flex items-center justify-center gap-2 text-xs text-[#718568] bg-[#F7F9F5] py-2.5 px-4 rounded-xl border border-[#E7ECE3]">
-                        <ShieldCheck className="w-4 h-4 text-[#607C3C]" />
-                        <span>Koneksi aman terenkripsi 256-bit standar RT / Paguyuban</span>
-                    </div>
                 </div>
 
                 {/* Footer Help Text */}
