@@ -88,15 +88,11 @@ const AboutSection = () => {
 
                             {/* Bottom Row: Text Information */}
                             <div className="relative z-10 text-right">
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#607C3C]/90 text-white text-[11px] font-bold tracking-wide mb-2.5 shadow-sm">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                    Sanitasi & Pengelolaan Sampah
-                                </span>
                                 <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-md">
-                                    Sistem Transparan
+                                    Pengelolaan Sampah
                                 </h3>
                                 <p className="text-white/85 mt-1 text-sm sm:text-base font-medium drop-shadow-sm">
-                                    Akuntabel. Real-time. Terverifikasi.
+                                    Transparan, Real-time, Terverifikasi.
                                 </p>
                             </div>
                         </div>
