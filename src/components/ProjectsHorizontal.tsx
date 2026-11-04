@@ -2,11 +2,6 @@ import { useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-import featureWaste from '../assets/feature-waste.svg';
-import featureBilling from '../assets/feature-billing.svg';
-import featureAudit from '../assets/feature-audit.svg';
-import featureScheduler from '../assets/feature-scheduler.svg';
-
 gsap.registerPlugin(ScrollTrigger);
 
 const projects = [
@@ -14,25 +9,29 @@ const projects = [
         id: 1,
         title: "SMART WASTE",
         category: "Manajemen Sampah & Daur Ulang",
-        image: featureWaste
+        description: "Pilah organik & daur ulang bernilai ekonomi langsung dari sumber rumah tangga.",
+        image: "https://images.pexels.com/photos/6990304/pexels-photo-6990304.jpeg?auto=compress&cs=tinysrgb&w=1200"
     },
     {
         id: 2,
         title: "IPL BILLING",
         category: "Otomasi Tagihan & Notifikasi",
-        image: featureBilling
+        description: "Invoice digital otomatis terintegrasi Virtual Account BCA & pelunasan instan.",
+        image: "https://images.pexels.com/photos/7688191/pexels-photo-7688191.jpeg?auto=compress&cs=tinysrgb&w=1200"
     },
     {
         id: 3,
         title: "EXPENSE AUDIT",
         category: "Transparansi Kas & Bukti GDrive",
-        image: featureAudit
+        description: "Buku kas terbuka dengan kuitansi verified multi-signature pengurus RT.",
+        image: "https://images.pexels.com/photos/7821688/pexels-photo-7821688.jpeg?auto=compress&cs=tinysrgb&w=1200"
     },
     {
         id: 4,
         title: "AUTO SCHEDULER",
-        category: "Pengingat & Backup Data",
-        image: featureScheduler
+        category: "Pengingat & Jadwal Operasional",
+        description: "Notifikasi armada truk sanitasi dan reminder iuran otomatis via WhatsApp & Web.",
+        image: "https://images.pexels.com/photos/4980430/pexels-photo-4980430.jpeg?auto=compress&cs=tinysrgb&w=1200"
     }
 ];
 
@@ -111,36 +110,44 @@ const ProjectsHorizontal = () => {
                     </div>
                 </div>
 
-                {/* 4 Core Features Cards */}
+                {/* 4 Core Features Cards - Full Image Photo Cards matching About style */}
                 {projects.map((project, index) => (
                     <div
                         key={project.id}
-                        className="flex-shrink-0 w-[80vw] max-w-[580px] h-[68vh] rounded-3xl bg-white border border-[#D2DBC5] shadow-[0_12px_32px_rgba(45,60,30,0.06)] hover:shadow-[0_16px_40px_rgba(45,60,30,0.12)] hover:border-[#607C3C]/50 transition-all duration-500 relative group overflow-hidden cursor-none"
+                        className="flex-shrink-0 w-[80vw] max-w-[580px] h-[68vh] rounded-3xl overflow-hidden border border-[#D2DBC5] shadow-[0_18px_45px_rgba(45,60,30,0.12)] p-7 sm:p-10 flex flex-col justify-between group transition-all duration-500 hover:shadow-[0_24px_50px_rgba(45,60,30,0.22)] relative bg-[#1A2518]"
                     >
-                        {/* 2D Flat Vector Illustration */}
-                        <div className="absolute inset-0 overflow-hidden flex items-center justify-center p-6 pb-24">
-                            <img
-                                src={project.image}
-                                alt={project.title}
-                                className="w-full h-full object-contain object-center group-hover:scale-105 transition-all duration-700 ease-out"
-                            />
-                            {/* Subtle White to Transparent Vignette at Bottom */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-white via-white/40 to-transparent pointer-events-none"></div>
+                        {/* Full-bleed background photo filling 100% of the card */}
+                        <img
+                            src={project.image}
+                            alt={project.title}
+                            className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                        />
+
+                        {/* Deep Contrast Gradients for optimal readability */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/50 pointer-events-none" />
+
+                        {/* Top Row: Card Number & Category Tag */}
+                        <div className="relative z-10 flex items-center justify-between">
+                            <span className="text-6xl sm:text-7xl font-extrabold text-white font-mono leading-none drop-shadow-md">
+                                0{index + 1}
+                            </span>
+                            <span className="px-3.5 py-1.5 rounded-full text-xs font-bold text-white bg-white/20 backdrop-blur-md border border-white/30 drop-shadow-sm">
+                                Klaster 05
+                            </span>
                         </div>
 
-                        {/* Top-Left Card Number with Distinct Soft Olive Accent (#9CB082) */}
-                        <div className="absolute top-8 left-8 z-10">
-                            <span className="text-5xl md:text-6xl font-extrabold text-[#9CB082] font-mono">0{index + 1}</span>
+                        {/* Bottom Row: Text Information */}
+                        <div className="relative z-10 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+                            <p className="text-sm sm:text-base font-bold text-[#A4C978] drop-shadow-sm mb-1.5 uppercase tracking-wide">
+                                {project.category}
+                            </p>
+                            <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-md mb-2">
+                                {project.title}
+                            </h3>
+                            <p className="text-white/85 text-sm sm:text-base font-medium drop-shadow-sm leading-relaxed max-w-lg">
+                                {project.description}
+                            </p>
                         </div>
-
-                        {/* Bottom Card Title & Subtitle */}
-                        <div className="absolute bottom-8 left-8 right-8 z-10 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
-                            <h3 className="text-3xl md:text-5xl font-extrabold text-[#192414] mb-2">{project.title}</h3>
-                            <p className="text-lg md:text-xl text-[#607C3C] font-semibold">{project.category}</p>
-                        </div>
-
-                        {/* Soft Hover Overlay */}
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-t from-[#607C3C]/5 to-transparent pointer-events-none"></div>
                     </div>
                 ))}
 

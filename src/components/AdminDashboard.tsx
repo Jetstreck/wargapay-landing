@@ -289,10 +289,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             prev.map(item =>
                 item.id === id
                     ? {
-                          ...item,
-                          status: 'VERIFIED',
-                          badgeClass: 'bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]'
-                      }
+                        ...item,
+                        status: 'VERIFIED',
+                        badgeClass: 'bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]'
+                    }
                     : item
             )
         );
@@ -304,10 +304,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             prev.map(item =>
                 item.id === id
                     ? {
-                          ...item,
-                          status: 'REJECTED',
-                          badgeClass: 'bg-[#FDF0E9] text-[#A6461D] border border-[#F5CEBA]'
-                      }
+                        ...item,
+                        status: 'REJECTED',
+                        badgeClass: 'bg-[#FDF0E9] text-[#A6461D] border border-[#F5CEBA]'
+                    }
                     : item
             )
         );
@@ -393,7 +393,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 w-full h-full bg-white text-[#192414] flex flex-col md:flex-row overflow-hidden font-sans antialiased selection:bg-[#607C3C] selection:text-white">
-            
+
             {/* Notification Toast */}
             <AnimatePresence>
                 {toastMessage && (
@@ -456,11 +456,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setActiveNav('overview');
                                 setSearchQuery('');
                             }}
-                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                                activeNav === 'overview'
+                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'overview'
                                     ? 'bg-[#607C3C] text-white shadow-xs'
                                     : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                            }`}
+                                }`}
                         >
                             <LayoutDashboard className="w-4 h-4" />
                             <span>Overview & Stats</span>
@@ -473,20 +472,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setActiveNav('verifikasi');
                                 setSearchQuery('');
                             }}
-                            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                                activeNav === 'verifikasi'
+                            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'verifikasi'
                                     ? 'bg-[#607C3C] text-white shadow-xs'
                                     : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                            }`}
+                                }`}
                         >
                             <div className="flex items-center gap-3">
                                 <CheckSquare className="w-4 h-4" />
                                 <span>Verifikasi IPL</span>
                             </div>
                             {pendingCount > 0 && (
-                                <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
-                                    activeNav === 'verifikasi' ? 'bg-white text-[#607C3C]' : 'bg-[#FFF8E7] text-[#9A6209]'
-                                }`}>
+                                <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${activeNav === 'verifikasi' ? 'bg-white text-[#607C3C]' : 'bg-[#FFF8E7] text-[#9A6209]'
+                                    }`}>
                                     {pendingCount} Pending
                                 </span>
                             )}
@@ -499,11 +496,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setActiveNav('buku-kas');
                                 setSearchQuery('');
                             }}
-                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                                activeNav === 'buku-kas'
+                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'buku-kas'
                                     ? 'bg-[#607C3C] text-white shadow-xs'
                                     : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                            }`}
+                                }`}
                         >
                             <BookOpen className="w-4 h-4" />
                             <span>Buku Kas & Pengeluaran</span>
@@ -516,11 +512,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setActiveNav('sanitasi');
                                 setSearchQuery('');
                             }}
-                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                                activeNav === 'sanitasi'
+                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'sanitasi'
                                     ? 'bg-[#607C3C] text-white shadow-xs'
                                     : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                            }`}
+                                }`}
                         >
                             <Truck className="w-4 h-4" />
                             <span>Operational & Schedule</span>
@@ -533,11 +528,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setActiveNav('warga');
                                 setSearchQuery('');
                             }}
-                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                                activeNav === 'warga'
+                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'warga'
                                     ? 'bg-[#607C3C] text-white shadow-xs'
                                     : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                            }`}
+                                }`}
                         >
                             <Users className="w-4 h-4" />
                             <span>Data Warga & Hunian</span>
@@ -550,11 +544,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setActiveNav('settings');
                                 setSearchQuery('');
                             }}
-                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                                activeNav === 'settings'
+                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'settings'
                                     ? 'bg-[#607C3C] text-white shadow-xs'
                                     : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                            }`}
+                                }`}
                         >
                             <Settings className="w-4 h-4" />
                             <span>System Settings</span>
@@ -628,7 +621,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 2. MAIN CONTENT AREA (Takes remaining full screen width & height)
                ========================================================================= */}
             <main className="flex-1 h-screen overflow-y-auto p-6 sm:p-10 lg:p-12 flex flex-col justify-between space-y-9">
-                
+
                 {/* -------------------------------------------------------------
                     TOP FILTER & SEARCH BAR (Adapts to Active Page)
                    ------------------------------------------------------------- */}
@@ -642,9 +635,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             {activeNav === 'warga' && 'Direktori Hunian & Warga Cluster'}
                             {activeNav === 'settings' && 'Konfigurasi Parameter Cluster RT 05'}
                         </h2>
-                        <span className="text-xs text-[#607C3C] font-semibold hidden sm:inline">
-                            Status Server: Online (GDrive Auto-Sync)
-                        </span>
                     </div>
 
                     <div className="flex flex-col lg:flex-row items-stretch lg:items-end gap-3 pt-1">
@@ -668,10 +658,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         activeNav === 'warga'
                                             ? 'Cari nama kepala keluarga, no. rumah, no. HP...'
                                             : activeNav === 'buku-kas'
-                                            ? 'Cari nama vendor, deskripsi pengeluaran, nomor nota...'
-                                            : activeNav === 'sanitasi'
-                                            ? 'Cari armada, nama driver, jadwal rute...'
-                                            : 'Cari Blok/No. Rumah, Nama Warga, atau ID Transaksi...'
+                                                ? 'Cari nama vendor, deskripsi pengeluaran, nomor nota...'
+                                                : activeNav === 'sanitasi'
+                                                    ? 'Cari armada, nama driver, jadwal rute...'
+                                                    : 'Cari Blok/No. Rumah, Nama Warga, atau ID Transaksi...'
                                     }
                                     className="w-full bg-[#F5F6F2] hover:bg-[#EEF1EB] focus:bg-white text-xs font-semibold text-[#192414] placeholder-[#9AA992] pl-10 pr-4 py-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none transition-all"
                                 />
