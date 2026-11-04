@@ -71,6 +71,7 @@ const Navbar = ({ onNavigate, onLoginClick }: NavbarProps) => {
                 {/* Right Action Button */}
                 <div className="flex items-center gap-3">
                     <button
+                        type="button"
                         onClick={() => {
                             if (onLoginClick) {
                                 onLoginClick();
@@ -79,7 +80,7 @@ const Navbar = ({ onNavigate, onLoginClick }: NavbarProps) => {
                                 if (contactElem) contactElem.scrollIntoView({ behavior: 'smooth' });
                             }
                         }}
-                        className="relative group px-5 py-2 rounded-full text-xs font-bold tracking-wide text-white bg-[#607C3C] hover:bg-[#506832] transition-all duration-300 shadow-[0_4px_16px_rgba(96,124,60,0.25)] hover:shadow-[0_6px_20px_rgba(96,124,60,0.4)] active:scale-95"
+                        className="relative group px-5 py-2 rounded-full text-xs font-bold tracking-wide text-white bg-[#607C3C] hover:bg-[#506832] transition-all duration-300 shadow-[0_4px_16px_rgba(96,124,60,0.25)] hover:shadow-[0_6px_20px_rgba(96,124,60,0.4)] active:scale-95 cursor-pointer"
                     >
                         <span className="relative z-10 flex items-center gap-2">
                             Sign In

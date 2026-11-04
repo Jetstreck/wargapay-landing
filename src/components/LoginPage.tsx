@@ -1,35 +1,52 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, ArrowLeft, CheckCircle2, Phone, Lock } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Eye, EyeOff, ArrowLeft, Phone, Lock } from 'lucide-react';
 import logoBrand from '../assets/logo-brand.jpg';
 
 interface LoginPageProps {
     onBackToHome: () => void;
+    onLoginSuccess?: (role: 'resident' | 'admin') => void;
 }
 
 const PEXELS_PHOTO_URL = 'https://images.pexels.com/photos/7501440/pexels-photo-7501440.jpeg?auto=compress&cs=tinysrgb&w=1600';
 
-const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome, onLoginSuccess }) => {
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [loginSuccess, setLoginSuccess] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
+
+    // Checks if the given credentials belong to an Admin / Pengurus RT
+    const checkIsAdmin = (id: string, pwd: string) => {
+        const cleanId = id.trim().toLowerCase();
+        const cleanPwd = pwd.trim().toLowerCase();
+        return (
+            cleanId.includes('admin') ||
+            cleanId.includes('pengurus') ||
+            cleanId.includes('bendahara') ||
+            cleanId.includes('rt05') ||
+            cleanPwd.includes('admin')
+        );
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
+        const isAdmin = checkIsAdmin(identifier, password);
+        const targetRole: 'resident' | 'admin' = isAdmin ? 'admin' : 'resident';
+        if (onLoginSuccess) {
+            onLoginSuccess(targetRole);
+        }
+    };
 
-        // Simulate API login call
-        setTimeout(() => {
-            setIsLoading(false);
-            setLoginSuccess(true);
-            setTimeout(() => {
-                setLoginSuccess(false);
-            }, 3000);
-        }, 1000);
+    const handleQuickAutofill = (type: 'resident' | 'admin') => {
+        if (type === 'resident') {
+            setIdentifier('budi@wargapay.id');
+            setPassword('warga123');
+        } else {
+            setIdentifier('admin@wargapay.id');
+            setPassword('admin123');
+        }
     };
 
     return (
@@ -119,31 +136,39 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
 
                 {/* Centered Minimalist Form Container */}
                 <div className="w-full max-w-md mx-auto my-auto py-4">
-                    {/* Feedback Status Toast */}
-                    <div className="min-h-[34px] mb-4">
-                        <AnimatePresence>
-                            {loginSuccess && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="p-3.5 rounded-xl bg-[#EDF5E8] border border-[#C5DCB6] flex items-center gap-3 text-xs text-[#3C5723] font-medium shadow-sm"
-                                >
-                                    <CheckCircle2 className="w-4 h-4 text-[#607C3C] shrink-0" />
-                                    <span>Verifikasi data berhasil! Mengarahkan ke Dashboard Warga...</span>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
                     {/* Form Header */}
-                    <div className="mb-8">
+                    <div className="mb-7">
                         <h1 className="text-3xl sm:text-4xl font-black text-[#1A2518] tracking-tight">
-                            Masuk ke Akun Warga
+                            Masuk ke WargaPay
                         </h1>
                         <p className="mt-2 text-sm text-[#5A6B52]">
-                            Silakan masukkan NIK / No. HP dan kata sandi Anda.
+                            Silakan masukkan email / no. HP dan kata sandi Anda.
                         </p>
+                    </div>
+
+                    {/* Quick Demo Credentials Autofill Helper */}
+                    <div className="mb-6 p-3 rounded-2xl bg-[#F6F8F3] border border-[#DCE4D3] text-xs">
+                        <span className="text-[11px] font-bold text-[#7A8A70] block mb-1.5 uppercase tracking-wider">
+                            Pilih Akun Demo (Uji Coba Cepat):
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => handleQuickAutofill('resident')}
+                                className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#EAF1E4] border border-[#D5DFC9] text-[#192414] hover:text-[#607C3C] text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+                            >
+                                <span className="w-2 h-2 rounded-full bg-[#607C3C]" />
+                                <span>Akun Warga (Bpk. Budi)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleQuickAutofill('admin')}
+                                className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#EAF1E4] border border-[#D5DFC9] text-[#192414] hover:text-[#1A331E] text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+                            >
+                                <span className="w-2 h-2 rounded-full bg-[#1A331E]" />
+                                <span>Akun Pengurus RT (Admin)</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Form Fields */}
@@ -154,7 +179,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
                                 htmlFor="identifier"
                                 className="block text-xs font-bold text-[#273623] mb-2 tracking-wide"
                             >
-                                Nomor HP / Email Warga
+                                Email / Nomor HP
                             </label>
                             <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7E9374] group-focus-within:text-[#607C3C] transition-colors">
@@ -166,7 +191,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
                                     required
                                     value={identifier}
                                     onChange={(e) => setIdentifier(e.target.value)}
-                                    placeholder="Contoh: 081234567890 atau blok.a1@wargapay.id"
+                                    placeholder="Contoh: budi@wargapay.id atau admin@wargapay.id"
                                     className="w-full pl-10 pr-4 py-3.5 bg-[#FAFBF9] hover:bg-white text-sm text-[#1A2518] placeholder-[#95A58E] rounded-xl border border-[#D9E3D3] focus:border-[#607C3C] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#607C3C]/15 transition-all duration-200"
                                 />
                             </div>
@@ -238,20 +263,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome }) => {
                         <div className="pt-3">
                             <button
                                 type="submit"
-                                disabled={isLoading}
-                                className="w-full py-4 px-6 rounded-full bg-[#607C3C] hover:bg-[#4E6730] active:scale-[0.99] text-white text-sm font-bold tracking-wide shadow-[0_6px_22px_rgba(96,124,60,0.3)] hover:shadow-[0_8px_28px_rgba(96,124,60,0.45)] transition-all duration-300 flex items-center justify-center gap-2.5 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+                                className="w-full py-4 px-6 rounded-full bg-[#607C3C] hover:bg-[#4E6730] active:scale-[0.99] text-white text-sm font-bold tracking-wide shadow-[0_6px_22px_rgba(96,124,60,0.3)] hover:shadow-[0_8px_28px_rgba(96,124,60,0.45)] transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer"
                             >
-                                {isLoading ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        <span>Memverifikasi Data Warga...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span>Masuk ke Dashboard</span>
-                                        <ArrowLeft className="w-4 h-4 rotate-180" />
-                                    </>
-                                )}
+                                <span>Masuk ke Dashboard</span>
+                                <ArrowLeft className="w-4 h-4 rotate-180" />
                             </button>
                         </div>
                     </form>

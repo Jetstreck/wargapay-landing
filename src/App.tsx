@@ -1,31 +1,49 @@
-import { useEffect, useRef, useState } from 'react';
-import Lenis from 'lenis';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
 
 import CustomCursor from './components/CustomCursor';
-import Navbar from './components/Navbar';
-import Hero3D from './components/Hero3D';
-import AboutSection from './components/AboutSection';
-import ProjectsHorizontal from './components/ProjectsHorizontal';
-import ExperimentLab from './components/ExperimentLab';
-import ContactSection from './components/ContactSection';
+import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
-
-gsap.registerPlugin(ScrollTrigger);
+import ResidentDashboard from './components/ResidentDashboard';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
-    const lenisRef = useRef<Lenis | null>(null);
-    const [view, setView] = useState<'landing' | 'login'>(() => {
-        return typeof window !== 'undefined' && window.location.hash === '#login' ? 'login' : 'landing';
+    const [view, setView] = useState<'landing' | 'login' | 'dashboard' | 'admin'>(() => {
+        if (typeof window !== 'undefined') {
+            const hash = window.location.hash;
+            if (hash === '#admin') return 'admin';
+            if (hash === '#dashboard') return 'dashboard';
+            if (hash === '#login') return 'login';
+        }
+        return 'landing';
     });
+
+    const resetViewport = () => {
+        if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            document.documentElement.style.removeProperty('overflow');
+            document.body.style.removeProperty('overflow');
+        }
+    };
 
     useEffect(() => {
         const handleHashChange = () => {
-            if (window.location.hash === '#login') {
+            resetViewport();
+            const hash = window.location.hash;
+            if (hash === '#admin') {
+                setView('admin');
+            } else if (hash === '#dashboard') {
+                setView('dashboard');
+            } else if (hash === '#login') {
                 setView('login');
-            } else if (window.location.hash === '' || window.location.hash === '#overview') {
+            } else if (
+                hash === '' ||
+                hash === '#overview' ||
+                hash === '#features' ||
+                hash === '#ecosystem' ||
+                hash === '#contact'
+            ) {
                 setView('landing');
             }
         };
@@ -34,86 +52,69 @@ function App() {
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
 
-    useEffect(() => {
-        const lenis = new Lenis({
-            duration: 1.2,
-            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-            orientation: 'vertical',
-            gestureOrientation: 'vertical',
-            smoothWheel: true,
-            wheelMultiplier: 1,
-            syncTouch: false,
-            touchMultiplier: 2,
-        });
-
-        lenisRef.current = lenis;
-
-        // Synchronize Lenis scroll events with GSAP ScrollTrigger
-        lenis.on('scroll', ScrollTrigger.update);
-
-        // Bind Lenis animation frame loop to GSAP's internal ticker
-        const tickerCallback = (time: number) => {
-            lenis.raf(time * 1000);
-        };
-        gsap.ticker.add(tickerCallback);
-        gsap.ticker.lagSmoothing(0);
-
-        ScrollTrigger.refresh();
-
-        return () => {
-            gsap.ticker.remove(tickerCallback);
-            lenis.destroy();
-        };
-    }, []);
-
-    // Pause/resume Lenis smoothly when login overlay is opened/closed
-    useEffect(() => {
-        if (lenisRef.current) {
-            if (view === 'login') {
-                lenisRef.current.stop();
-            } else {
-                lenisRef.current.start();
-            }
-        }
-    }, [view]);
-
-    const handleNavigate = (id: string) => {
-        const target = document.getElementById(id);
-        if (target && lenisRef.current) {
-            lenisRef.current.scrollTo(target);
-        } else if (target) {
-            target.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
-    const goToLogin = () => {
-        setView('login');
-        window.location.hash = '#login';
-    };
-
     const goToLanding = () => {
+        resetViewport();
         setView('landing');
-        if (window.location.hash === '#login') {
+        if (
+            window.location.hash === '#login' ||
+            window.location.hash === '#dashboard' ||
+            window.location.hash === '#admin'
+        ) {
             window.location.hash = '';
         }
     };
 
-    return (
-        <main className="w-full min-h-screen bg-[#F0F2EB] text-[#192414] overflow-hidden selection:bg-[#607C3C] selection:text-white relative">
-            <CustomCursor />
-            <Navbar onNavigate={handleNavigate} onLoginClick={goToLogin} />
-            <Hero3D />
-            <AboutSection />
-            <ProjectsHorizontal />
-            <ExperimentLab />
-            <ContactSection />
+    const goToLogin = () => {
+        resetViewport();
+        setView('login');
+        window.location.hash = '#login';
+    };
 
-            {/* Seamless 50/50 Split-Screen Login Page (Always in viewport) */}
-            <AnimatePresence>
-                {view === 'login' && (
-                    <LoginPage onBackToHome={goToLanding} />
-                )}
-            </AnimatePresence>
+    const goToDashboard = () => {
+        resetViewport();
+        setView('dashboard');
+        window.location.hash = '#dashboard';
+    };
+
+    const goToAdmin = () => {
+        resetViewport();
+        setView('admin');
+        window.location.hash = '#admin';
+    };
+
+    return (
+        <main className="w-full min-h-screen bg-[#F0F2EB] text-[#192414] selection:bg-[#607C3C] selection:text-white relative">
+            <CustomCursor />
+
+            {/* View 1: Admin Dashboard (Pengurus RT) */}
+            {view === 'admin' ? (
+                <AdminDashboard
+                    onLogout={goToLanding}
+                    onBackToHome={goToLanding}
+                    onSwitchToResident={goToDashboard}
+                />
+            ) : view === 'dashboard' ? (
+                /* View 2: Resident Dashboard (Warga) */
+                <ResidentDashboard
+                    onLogout={goToLanding}
+                    onBackToHome={goToLanding}
+                />
+            ) : view === 'login' ? (
+                /* View 3: Dedicated Login Page */
+                <LoginPage
+                    onBackToHome={goToLanding}
+                    onLoginSuccess={(role) => {
+                        if (role === 'admin') {
+                            goToAdmin();
+                        } else {
+                            goToDashboard();
+                        }
+                    }}
+                />
+            ) : (
+                /* View 4: Landing Page */
+                <LandingPage onLoginClick={goToLogin} />
+            )}
         </main>
     );
 }
