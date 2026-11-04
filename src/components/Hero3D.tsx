@@ -11,9 +11,9 @@ const EarthModel = () => {
 
     useFrame((state) => {
         if (groupRef.current) {
-            // Earth axial tilt and gentle rotation
+            // Earth axial tilt and gentle continuous rotation
             groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.16;
-            groupRef.current.rotation.x = 0.23; // Realistic ~23.5 degree axial tilt
+            groupRef.current.rotation.x = 0.23;
         }
     });
 
@@ -35,9 +35,10 @@ const Hero3D = () => {
             {/* 3D Scene */}
             <div className="absolute inset-0 z-0">
                 <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
-                    <ambientLight intensity={1.4} />
-                    <directionalLight position={[8, 6, 6]} intensity={2.8} color="#FFFFFF" />
-                    <pointLight position={[-8, -5, -4]} intensity={1.2} color="#cbd5e1" />
+                    <ambientLight intensity={1.6} />
+                    <directionalLight position={[0, 4, 6]} intensity={2.2} color="#FFFFFF" />
+                    <directionalLight position={[8, 7, 5]} intensity={2.0} color="#FFFFFF" />
+                    <pointLight position={[-8, -4, -3]} intensity={1.2} color="#cbd5e1" />
                     <pointLight position={[2, -4, 3]} intensity={1.0} color="#8FAF64" />
 
                     <Suspense fallback={null}>
@@ -53,14 +54,24 @@ const Hero3D = () => {
                 </Canvas>
             </div>
 
-            {/* Overlay Content */}
-            <div className="relative z-10 text-center px-4 pointer-events-none select-none">
+            {/* Soft Radial Ambient Aura for Text Legibility Over the Planet */}
+            <div
+                className="absolute inset-0 z-[5] pointer-events-none"
+                style={{
+                    background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(244, 246, 240, 0.4) 0%, rgba(244, 246, 240, 0.1) 50%, transparent 80%)'
+                }}
+            />
+
+            {/* Overlay Content with Enhanced Contrast Halo */}
+            <div className="relative z-10 text-center px-4 pointer-events-none select-none max-w-7xl mx-auto">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
+                    initial={{ opacity: 0, scale: 0.85, filter: "blur(10px)" }}
                     animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    transition={{ duration: 1.2, ease: "easeOut" }}
                 >
-                    <h1 className="text-6xl md:text-9xl font-extrabold tracking-tighter text-[#1A2518] mb-6 drop-shadow-sm">
+                    <h1
+                        className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight text-[#111C0F] mb-6 drop-shadow-[0_0_30px_rgba(255,255,255,0.95)] drop-shadow-[0_2px_6px_rgba(255,255,255,0.95)]"
+                    >
                         TRANSPARANSI RT. TANPA BATAS.
                     </h1>
                 </motion.div>
@@ -68,22 +79,25 @@ const Hero3D = () => {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8, duration: 1 }}
+                    transition={{ delay: 0.6, duration: 1 }}
                 >
-                    <h2 className="text-3xl md:text-5xl font-medium text-[#607C3C] tracking-widest uppercase">
+                    <h2
+                        className="text-2xl sm:text-3xl md:text-5xl font-black text-[#263D12] tracking-widest uppercase drop-shadow-[0_0_24px_rgba(255,255,255,0.95)] drop-shadow-[0_1px_4px_rgba(255,255,255,0.95)]"
+                    >
                         SMART WASTE & KEUANGAN WARGA.
                     </h2>
                 </motion.div>
 
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1.5, duration: 1 }}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.2, duration: 1 }}
                     className="mt-12"
                 >
-                    <p className="text-[#5A6B52] text-sm tracking-[0.3em] uppercase animate-pulse font-semibold">
-                        SCROLL TO EXPLORE
-                    </p>
+                    <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-[#D5E1CD] shadow-[0_4px_20px_rgba(0,0,0,0.06)] text-[#3E5624] text-xs tracking-[0.25em] uppercase font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#607C3C] animate-pulse" />
+                        <span>SCROLL TO EXPLORE</span>
+                    </div>
                 </motion.div>
             </div>
 
