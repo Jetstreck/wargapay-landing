@@ -31,10 +31,24 @@ useGLTF.preload(earthGlbUrl);
 
 const Hero3D = () => {
     return (
-        <section id="overview" className="h-screen w-full relative flex items-center justify-center overflow-hidden bg-[#F4F6F0]">
-            {/* 3D Scene */}
-            <div className="absolute inset-0 z-0">
-                <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
+        <section id="overview" className="h-screen w-full relative flex items-center justify-center overflow-hidden bg-[#F0F2EB]">
+            {/* Background Decorative Embedded Text Behind Earth (Layer 0) */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden z-0">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    className="flex whitespace-nowrap"
+                >
+                    <span className="text-[13vw] sm:text-[15vw] font-black tracking-tighter text-white uppercase whitespace-nowrap leading-none select-none drop-shadow-[0_8px_30px_rgba(96,124,60,0.06)]">
+                        WARGAPAY WARGAPAY
+                    </span>
+                </motion.div>
+            </div>
+
+            {/* 3D Scene (Layer 2 - Earth renders directly on top of the white decorative text) */}
+            <div className="absolute inset-0 z-[2]">
+                <Canvas camera={{ position: [0, 0, 5], fov: 45 }} gl={{ alpha: true }}>
                     <ambientLight intensity={0.9} />
                     <directionalLight position={[6, 5, 5]} intensity={1.7} color="#FFFFFF" />
                     <directionalLight position={[-4, 2, 4]} intensity={0.6} color="#E8F0E3" />
@@ -52,15 +66,7 @@ const Hero3D = () => {
                 </Canvas>
             </div>
 
-            {/* Soft Radial Ambient Aura for Text Legibility Over the Planet */}
-            <div
-                className="absolute inset-0 z-[5] pointer-events-none"
-                style={{
-                    background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(244, 246, 240, 0.4) 0%, rgba(244, 246, 240, 0.1) 50%, transparent 80%)'
-                }}
-            />
-
-            {/* Overlay Content with Enhanced Contrast Halo */}
+            {/* Front Overlay Content (Layer 10) */}
             <div className="relative z-10 text-center px-4 pointer-events-none select-none max-w-7xl mx-auto">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.85, filter: "blur(10px)" }}
@@ -68,7 +74,7 @@ const Hero3D = () => {
                     transition={{ duration: 1.2, ease: "easeOut" }}
                 >
                     <h1
-                        className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight text-[#111C0F] mb-6 drop-shadow-[0_0_30px_rgba(255,255,255,0.95)] drop-shadow-[0_2px_6px_rgba(255,255,255,0.95)]"
+                        className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight text-[#192414] mb-6 drop-shadow-sm"
                     >
                         TRANSPARANSI RT. TANPA BATAS.
                     </h1>
@@ -80,7 +86,7 @@ const Hero3D = () => {
                     transition={{ delay: 0.6, duration: 1 }}
                 >
                     <h2
-                        className="text-2xl sm:text-3xl md:text-5xl font-black text-[#263D12] tracking-widest uppercase drop-shadow-[0_0_24px_rgba(255,255,255,0.95)] drop-shadow-[0_1px_4px_rgba(255,255,255,0.95)]"
+                        className="text-2xl sm:text-3xl md:text-5xl font-black text-[#607C3C] tracking-widest uppercase drop-shadow-sm"
                     >
                         SMART WASTE & KEUANGAN WARGA.
                     </h2>

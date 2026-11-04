@@ -3,9 +3,9 @@ import logoBrand from '../assets/logo-brand.jpg';
 
 const ContactSection = () => {
     return (
-        <section id="contact" className="min-h-screen flex items-center justify-center bg-[#F4F6F0] relative overflow-hidden py-24">
+        <section id="contact" className="min-h-screen flex items-center justify-center bg-[#F0F2EB] relative overflow-hidden py-24">
             {/* Subtle Ambient Radial Glow */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#607C3C]/10 via-[#F4F6F0] to-[#F4F6F0] pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#607C3C]/8 via-[#F0F2EB] to-[#F0F2EB] pointer-events-none"></div>
 
             <div className="max-w-3xl w-full px-6 relative z-10">
                 <motion.div
@@ -14,7 +14,7 @@ const ContactSection = () => {
                     transition={{ duration: 0.8 }}
                     className="text-center mb-16"
                 >
-                    <h2 className="text-6xl md:text-8xl font-extrabold text-[#1A2518] mb-6">
+                    <h2 className="text-6xl md:text-8xl font-extrabold text-[#192414] mb-6">
                         HUBUNGI <span className="text-[#607C3C]">PENGURUS</span>
                     </h2>
                     <p className="text-xl text-[#5A6B52]">
@@ -26,7 +26,7 @@ const ContactSection = () => {
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
                     transition={{ duration: 0.8, delay: 0.2 }}
-                    className="space-y-8 bg-white p-8 md:p-12 rounded-3xl border border-[#E0E6D8] shadow-[0_12px_45px_rgba(96,124,60,0.08)]"
+                    className="space-y-8 bg-white p-8 md:p-12 rounded-3xl border border-[#D2DBC5] shadow-[0_12px_32px_rgba(45,60,30,0.06)]"
                     onSubmit={(e) => {
                         e.preventDefault();
                         alert('Pesan berhasil terkirim ke pengurus klaster!');
@@ -36,7 +36,7 @@ const ContactSection = () => {
                         <input
                             type="text"
                             required
-                            className="w-full bg-transparent border-b border-[#CBD5E1] py-4 text-xl text-[#1A2518] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#607C3C] transition-colors peer"
+                            className="w-full bg-transparent border-b border-[#D2DBC5] py-4 text-xl text-[#192414] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#607C3C] transition-colors peer"
                             placeholder="Nama Warga / Blok No."
                         />
                         <div className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#607C3C] peer-focus:w-full transition-all duration-500"></div>
@@ -46,7 +46,7 @@ const ContactSection = () => {
                         <input
                             type="email"
                             required
-                            className="w-full bg-transparent border-b border-[#CBD5E1] py-4 text-xl text-[#1A2518] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#607C3C] transition-colors peer"
+                            className="w-full bg-transparent border-b border-[#D2DBC5] py-4 text-xl text-[#192414] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#607C3C] transition-colors peer"
                             placeholder="Email Aktif"
                         />
                         <div className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#607C3C] peer-focus:w-full transition-all duration-500"></div>
@@ -56,7 +56,7 @@ const ContactSection = () => {
                         <textarea
                             rows={4}
                             required
-                            className="w-full bg-transparent border-b border-[#CBD5E1] py-4 text-xl text-[#1A2518] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#607C3C] transition-colors peer resize-none"
+                            className="w-full bg-transparent border-b border-[#D2DBC5] py-4 text-xl text-[#192414] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#607C3C] transition-colors peer resize-none"
                             placeholder="Pesan atau Kendala Lingkungan"
                         />
                         <div className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#607C3C] peer-focus:w-full transition-all duration-500"></div>
@@ -74,12 +74,12 @@ const ContactSection = () => {
                     </div>
                 </motion.form>
 
-                <footer className="mt-20 border-t border-[#E0E6D8] pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[#718096] text-sm font-mono">
+                <footer className="mt-20 border-t border-[#D2DBC5] pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[#718096] text-sm font-mono">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded-full overflow-hidden border border-[#E0E6D8] bg-white flex items-center justify-center p-0.5">
+                        <div className="w-6 h-6 rounded-full overflow-hidden border border-[#D2DBC5] bg-white flex items-center justify-center p-0.5 shadow-sm">
                             <img src={logoBrand} alt="WargaPay Logo" className="w-full h-full object-contain" />
                         </div>
-                        <span><strong className="text-[#1A2518]">WARGAPAY</strong> &copy; 2026. SMART RESIDENT ECOSYSTEM.</span>
+                        <span><strong className="text-[#192414]">WARGAPAY</strong> &copy; 2026. SMART RESIDENT ECOSYSTEM.</span>
                     </div>
                     <div className="space-x-6">
                         <a href="#overview" className="hover:text-[#607C3C] transition-colors">PORTAL WARGA</a>

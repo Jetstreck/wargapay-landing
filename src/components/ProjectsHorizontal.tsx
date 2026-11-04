@@ -87,18 +87,18 @@ const ProjectsHorizontal = () => {
     }, []);
 
     return (
-        <section id="features" ref={triggerRef} className="overflow-hidden bg-[#F4F6F0] relative">
+        <section id="features" ref={triggerRef} className="overflow-hidden bg-[#F0F2EB] relative">
             <div
                 ref={sectionRef}
                 className="h-screen flex items-center pl-12 md:pl-24 pr-16 md:pr-32 gap-12 md:gap-24 w-fit"
             >
                 {/* Section Title Card */}
                 <div className="flex-shrink-0 w-[340px] md:w-[420px]">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#607C3C]/30 bg-[#607C3C]/10 text-[#607C3C] text-xs font-mono mb-4 tracking-wider uppercase font-semibold">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#D2DBC5] bg-[#607C3C]/10 text-[#607C3C] text-xs font-mono mb-4 tracking-wider uppercase font-semibold shadow-sm">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#607C3C] animate-pulse"></span>
                         Solusi Klaster
                     </div>
-                    <h2 className="text-6xl md:text-8xl font-extrabold text-[#1A2518] leading-tight">
+                    <h2 className="text-6xl md:text-8xl font-extrabold text-[#192414] leading-tight">
                         FITUR <br />
                         <span className="text-[#607C3C]">UTAMA</span>
                     </h2>
@@ -115,7 +115,7 @@ const ProjectsHorizontal = () => {
                 {projects.map((project, index) => (
                     <div
                         key={project.id}
-                        className="flex-shrink-0 w-[80vw] max-w-[580px] h-[68vh] rounded-3xl bg-white border border-[#E0E6D8] shadow-[0_12px_40px_rgba(96,124,60,0.08)] hover:shadow-[0_18px_50px_rgba(96,124,60,0.14)] hover:border-[#607C3C]/40 transition-all duration-500 relative group overflow-hidden cursor-none"
+                        className="flex-shrink-0 w-[80vw] max-w-[580px] h-[68vh] rounded-3xl bg-white border border-[#D2DBC5] shadow-[0_12px_32px_rgba(45,60,30,0.06)] hover:shadow-[0_16px_40px_rgba(45,60,30,0.12)] hover:border-[#607C3C]/50 transition-all duration-500 relative group overflow-hidden cursor-none"
                     >
                         {/* 2D Flat Vector Illustration */}
                         <div className="absolute inset-0 overflow-hidden flex items-center justify-center p-6 pb-24">
@@ -128,14 +128,14 @@ const ProjectsHorizontal = () => {
                             <div className="absolute inset-0 bg-gradient-to-t from-white via-white/40 to-transparent pointer-events-none"></div>
                         </div>
 
-                        {/* Top-Left Card Number */}
+                        {/* Top-Left Card Number with Distinct Soft Olive Accent (#9CB082) */}
                         <div className="absolute top-8 left-8 z-10">
-                            <span className="text-5xl md:text-6xl font-extrabold text-[#607C3C]/20 font-mono">0{index + 1}</span>
+                            <span className="text-5xl md:text-6xl font-extrabold text-[#9CB082] font-mono">0{index + 1}</span>
                         </div>
 
                         {/* Bottom Card Title & Subtitle */}
                         <div className="absolute bottom-8 left-8 right-8 z-10 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
-                            <h3 className="text-3xl md:text-5xl font-extrabold text-[#1A2518] mb-2">{project.title}</h3>
+                            <h3 className="text-3xl md:text-5xl font-extrabold text-[#192414] mb-2">{project.title}</h3>
                             <p className="text-lg md:text-xl text-[#607C3C] font-semibold">{project.category}</p>
                         </div>
 
@@ -146,7 +146,7 @@ const ProjectsHorizontal = () => {
 
                 {/* Text Block Beside Card 04 */}
                 <div className="flex-shrink-0 w-[400px] flex items-center justify-center">
-                    <h3 className="text-4xl text-[#1A2518] font-bold text-center leading-snug">
+                    <h3 className="text-4xl text-[#192414] font-bold text-center leading-snug">
                         Detailed <br /> Archive <br />
                         <span className="text-[#607C3C]">&rarr;</span>
                     </h3>

@@ -8,8 +8,8 @@
   font-weight: 400;
 
   color-scheme: light;
-  color: #1A2518;
-  background-color: #F4F6F0;
+  color: #192414;
+  background-color: #F0F2EB;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,5 +21,5 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #F4F6F0;
+  background-color: #F0F2EB;
 }

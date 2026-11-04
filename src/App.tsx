@@ -17,14 +17,11 @@ gsap.registerPlugin(ScrollTrigger);
 
 function App() {
     const lenisRef = useRef<Lenis | null>(null);
-    const [view, setView] = useState<'landing' | 'login'>('landing');
+    const [view, setView] = useState<'landing' | 'login'>(() => {
+        return typeof window !== 'undefined' && window.location.hash === '#login' ? 'login' : 'landing';
+    });
 
     useEffect(() => {
-        // Sync URL hash with view state
-        if (window.location.hash === '#login') {
-            setView('login');
-        }
-
         const handleHashChange = () => {
             if (window.location.hash === '#login') {
                 setView('login');
@@ -102,7 +99,7 @@ function App() {
     };
 
     return (
-        <main className="w-full min-h-screen bg-[#F4F6F0] text-[#1A2518] overflow-hidden selection:bg-[#607C3C] selection:text-white relative">
+        <main className="w-full min-h-screen bg-[#F0F2EB] text-[#192414] overflow-hidden selection:bg-[#607C3C] selection:text-white relative">
             <CustomCursor />
             <Navbar onNavigate={handleNavigate} onLoginClick={goToLogin} />
             <Hero3D />

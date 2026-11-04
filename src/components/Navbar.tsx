@@ -33,7 +33,7 @@ const Navbar = ({ onNavigate, onLoginClick }: NavbarProps) => {
                 initial={{ y: -40, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                className="w-full flex items-center justify-between px-5 md:px-7 py-3 rounded-full bg-white/85 backdrop-blur-xl border border-[#E0E6D8] shadow-[0_8px_30px_rgba(96,124,60,0.08)] ring-1 ring-black/[0.03]"
+                className="w-full flex items-center justify-between px-5 md:px-7 py-3 rounded-full bg-white/90 backdrop-blur-xl border border-[#D2DBC5] shadow-[0_12px_32px_rgba(45,60,30,0.08)] ring-1 ring-black/[0.02]"
             >
                 {/* Brand Logo */}
                 <a
@@ -41,14 +41,14 @@ const Navbar = ({ onNavigate, onLoginClick }: NavbarProps) => {
                     onClick={(e) => handleClick(e, '#overview')}
                     className="flex items-center gap-3 group cursor-pointer"
                 >
-                    <div className="w-9 h-9 rounded-full overflow-hidden border border-[#E0E6D8] bg-white flex items-center justify-center p-0.5 shadow-sm group-hover:border-[#607C3C] group-hover:shadow-[0_2px_12px_rgba(96,124,60,0.25)] transition-all duration-300">
+                    <div className="w-9 h-9 rounded-full overflow-hidden border border-[#D2DBC5] bg-white flex items-center justify-center p-0.5 shadow-sm group-hover:border-[#607C3C] group-hover:shadow-[0_2px_12px_rgba(96,124,60,0.25)] transition-all duration-300">
                         <img
                             src={logoBrand}
                             alt="WargaPay Logo"
                             className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
                         />
                     </div>
-                    <span className="font-extrabold text-lg md:text-xl tracking-tight text-[#1A2518]">
+                    <span className="font-extrabold text-lg md:text-xl tracking-tight text-[#192414]">
                         Warga<span className="text-[#607C3C]">Pay</span>
                     </span>
                 </a>
@@ -60,7 +60,7 @@ const Navbar = ({ onNavigate, onLoginClick }: NavbarProps) => {
                             key={item.label}
                             href={item.href}
                             onClick={(e) => handleClick(e, item.href)}
-                            className="text-xs font-semibold uppercase tracking-wider text-[#5A6B52] hover:text-[#1A2518] transition-colors duration-200 relative group py-1"
+                            className="text-xs font-semibold uppercase tracking-wider text-[#5A6B52] hover:text-[#192414] transition-colors duration-200 relative group py-1"
                         >
                             <span>{item.label}</span>
                             <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#607C3C] rounded-full group-hover:w-full transition-all duration-300"></span>
