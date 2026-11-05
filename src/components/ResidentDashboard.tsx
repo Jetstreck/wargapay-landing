@@ -25,6 +25,7 @@ import {
     CloudSun,
     QrCode,
     Calendar,
+    Bell,
     Loader2
 } from 'lucide-react';
 import logoBrand from '../assets/logo-brand.jpg';
@@ -35,13 +36,16 @@ import {
     apiGetExpenses,
     apiGetServices,
     apiGetWeather,
+    apiGetNotifications,
     apiCreateTransaction,
     apiSimulatePayment,
     openMidtransSnap,
+    isMidtransRealToken,
     DuesItem,
     ExpenseItem,
     WasteServiceItem,
     WeatherData,
+    NotificationItem,
     User
 } from '../services/api';
 
@@ -77,6 +81,22 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [isPaying, setIsPaying] = useState(false);
+
+    // Notifications & Reminders (dari Cronjob Backend)
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+    const [unreadNotifs, setUnreadNotifs] = useState(0);
+    const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
+    // QRIS Payment Modal (Sandbox Demo & Real Fallback)
+    const [activeQrisModal, setActiveQrisModal] = useState<{
+        isOpen: boolean;
+        txId: number;
+        orderId: string;
+        amount: number;
+        title: string;
+        isWasteService?: boolean;
+    } | null>(null);
+    const [isSimulatingQris, setIsSimulatingQris] = useState(false);
 
     // Current User & Weather state
     const [currentUser, setCurrentUser] = useState<User>(() => user || getStoredUser() || { id: 0, name: 'Warga', email: 'warga@wargapay.id', role: 'user' });
@@ -159,10 +179,23 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
         }
     };
 
+    const fetchNotificationsFromBackend = async () => {
+        try {
+            const res = await apiGetNotifications();
+            if (res && res.data) {
+                setNotifications(res.data);
+                setUnreadNotifs(res.unread || 0);
+            }
+        } catch (e) {
+            console.log('Gagal fetch notifications:', e);
+        }
+    };
+
     useEffect(() => {
         fetchDuesFromBackend();
         fetchExpensesFromBackend();
         fetchServicesFromBackend();
+        fetchNotificationsFromBackend();
 
         // Load Weather
         apiGetWeather(-6.2088, 106.8456).then((w) => {
@@ -174,33 +207,63 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     const handlePayMidtrans = async (bill: any) => {
         try {
             setIsPaying(true);
-            showToast('Menghubungkan ke Midtrans Snap...');
+            showToast('Menghubungkan ke Midtrans...');
             const tx = await apiCreateTransaction({
                 type: 'dues',
                 dues_id: bill.rawId || 1,
             });
 
-            openMidtransSnap(tx.snap_token || '', tx.snap_redirect_url, {
-                onSuccess: () => {
-                    showToast('Pembayaran Midtrans Berhasil!');
-                    fetchDuesFromBackend();
-                    setSelectedInvoice(null);
-                },
-                onPending: () => {
-                    showToast('Menunggu pembayaran QRIS / Bank Transfer.');
-                    fetchDuesFromBackend();
-                },
-                onError: () => {
-                    showToast('Pembayaran gagal atau dibatalkan.');
-                },
-                onClose: () => {
-                    showToast('Jendela pembayaran ditutup.');
-                },
-            });
+            if (isMidtransRealToken(tx.snap_token)) {
+                openMidtransSnap(tx.snap_token || '', tx.snap_redirect_url, {
+                    onSuccess: () => {
+                        showToast('Pembayaran Midtrans Berhasil!');
+                        fetchDuesFromBackend();
+                        fetchNotificationsFromBackend();
+                        setSelectedInvoice(null);
+                    },
+                    onPending: () => {
+                        showToast('Menunggu pembayaran QRIS / Bank Transfer.');
+                        fetchDuesFromBackend();
+                    },
+                    onError: () => {
+                        showToast('Pembayaran gagal atau dibatalkan.');
+                    },
+                    onClose: () => {
+                        showToast('Jendela pembayaran ditutup.');
+                    },
+                });
+            } else {
+                // Fallback QRIS Modal (menghindari error "Transaksi tidak ditemukan" dari iframe sandbox)
+                setActiveQrisModal({
+                    isOpen: true,
+                    txId: tx.id,
+                    orderId: tx.order_id,
+                    amount: tx.amount,
+                    title: bill.title || 'Iuran Pengelolaan Lingkungan (IPL)',
+                    isWasteService: false,
+                });
+            }
         } catch (err: any) {
             showToast(err.message || 'Gagal memulai transaksi Midtrans.');
         } finally {
             setIsPaying(false);
+        }
+    };
+
+    const handleConfirmQrisPaid = async () => {
+        if (!activeQrisModal) return;
+        try {
+            setIsSimulatingQris(true);
+            await apiSimulatePayment(activeQrisModal.txId);
+            showToast(`Pembayaran ${activeQrisModal.title} Berhasil Dikonfirmasi!`);
+            setActiveQrisModal(null);
+            setSelectedInvoice(null);
+            await fetchDuesFromBackend();
+            await fetchNotificationsFromBackend();
+        } catch (err: any) {
+            showToast(err.message || 'Gagal konfirmasi pembayaran QRIS');
+        } finally {
+            setIsSimulatingQris(false);
         }
     };
 
@@ -214,6 +277,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             await apiSimulatePayment(tx.id);
             showToast('Simulasi Berhasil! Status tagihan lunas.');
             await fetchDuesFromBackend();
+            await fetchNotificationsFromBackend();
             setSelectedInvoice(null);
         } catch (err: any) {
             showToast(err.message || 'Gagal simulasi pembayaran.');
@@ -225,7 +289,21 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     // ==========================================
     // DATA 1: IURAN & TAGIHAN WARGA
     // ==========================================
-    const [billItems, setBillItems] = useState([
+    interface ResidentBillItem {
+        id: string;
+        rawId?: number;
+        title: string;
+        tag: string;
+        status: string;
+        rawStatus?: string;
+        amount: string;
+        badgeBg: string;
+        details: string;
+        isFavorite: boolean;
+        isCurrent: boolean;
+    }
+
+    const [billItems, setBillItems] = useState<ResidentBillItem[]>([
         {
             id: 'IPL-2024-10',
             title: 'IPL Periode Oktober 2024',
@@ -352,10 +430,11 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             const serviceName = selectedServiceForOrder.name;
             setSelectedServiceForOrder(null);
 
-            if (tx.snap_token) {
-                openMidtransSnap(tx.snap_token, tx.snap_redirect_url, {
+            if (isMidtransRealToken(tx.snap_token)) {
+                openMidtransSnap(tx.snap_token || '', tx.snap_redirect_url, {
                     onSuccess: () => {
                         showToast(`Pembayaran pesanan ${serviceName} Berhasil!`);
+                        fetchNotificationsFromBackend();
                     },
                     onPending: () => {
                         showToast('Menunggu pembayaran Midtrans');
@@ -368,7 +447,14 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                     },
                 });
             } else {
-                showToast(`Pesanan ${serviceName} berhasil dibuat!`);
+                setActiveQrisModal({
+                    isOpen: true,
+                    txId: tx.id,
+                    orderId: tx.order_id,
+                    amount: tx.amount,
+                    title: `Penjemputan Sampah: ${serviceName}`,
+                    isWasteService: true,
+                });
             }
         } catch (err: any) {
             setIsOrdering(false);
@@ -647,7 +733,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             <main className="flex-1 h-screen overflow-y-auto p-6 sm:p-10 lg:p-12 flex flex-col justify-between space-y-7">
 
                 {/* Profile Header Greeting Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#D2DBC5] shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#D2DBC5] shadow-2xs relative">
                     <div className="flex items-center gap-3.5">
                         <div className="w-12 h-12 rounded-full bg-[#607C3C] text-white font-black text-sm flex items-center justify-center border-2 border-[#4F6830] shadow-2xs uppercase shrink-0">
                             {getInitials(currentUser.name)}
@@ -666,11 +752,115 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                             </p>
                         </div>
                     </div>
-                    <div className="text-left sm:text-right shrink-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A8A70] block">Cluster Domisili</span>
-                        <span className="text-xs font-bold text-[#192414]">Cluster 05 - Blok Hunian</span>
+                    <div className="flex items-center gap-3 self-end sm:self-center">
+                        {/* Notification Bell with Badge */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                                className="w-10 h-10 rounded-xl bg-[#F4F6F1] hover:bg-[#EAEFE5] text-[#3B4F25] flex items-center justify-center transition-colors relative cursor-pointer"
+                                title="Notifikasi & Pengingat Tagihan"
+                            >
+                                <Bell className="w-5 h-5" />
+                                {unreadNotifs > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#C53030] text-white font-black text-[10px] rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                                        {unreadNotifs}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Dropdown Notifikasi */}
+                            <AnimatePresence>
+                                {showNotifDropdown && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl border border-[#D2DBC5] shadow-2xl p-4 z-50 text-left"
+                                    >
+                                        <div className="flex items-center justify-between pb-3 border-b border-[#F0F3EC]">
+                                            <div className="flex items-center gap-2">
+                                                <Bell className="w-4 h-4 text-[#607C3C]" />
+                                                <h3 className="font-extrabold text-xs text-[#192414]">Pengingat & Notifikasi</h3>
+                                            </div>
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EDF5E8] text-[#2F611E]">
+                                                {notifications.length} Info
+                                            </span>
+                                        </div>
+
+                                        <div className="max-h-72 overflow-y-auto space-y-2 py-2">
+                                            {notifications.length === 0 ? (
+                                                <p className="text-xs text-[#7A8A70] text-center py-4">Tidak ada notifikasi baru.</p>
+                                            ) : (
+                                                notifications.map((notif) => (
+                                                    <div
+                                                        key={notif.id}
+                                                        className={`p-3 rounded-xl border text-xs transition-colors ${
+                                                            notif.type === 'dues_reminder'
+                                                                ? 'bg-[#FFF9EE] border-[#F5E2B8] text-[#875005]'
+                                                                : 'bg-[#F7F9F5] border-[#E2EBDC] text-[#2F611E]'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <h4 className="font-extrabold text-xs text-[#192414]">{notif.title}</h4>
+                                                            <span className="text-[9px] text-[#8F9E87] shrink-0 font-medium">{notif.date}</span>
+                                                        </div>
+                                                        <p className="text-[11px] text-[#4F5B46] mt-1 leading-relaxed">{notif.message}</p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        <div className="text-left sm:text-right shrink-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A8A70] block">Cluster Domisili</span>
+                            <span className="text-xs font-bold text-[#192414]">Cluster 05 - Blok Hunian</span>
+                        </div>
                     </div>
                 </div>
+
+                {/* Active Cronjob Reminder Alert Banner */}
+                {billItems.some((b) => b.rawStatus === 'unpaid' || b.status === 'BELUM LUNAS') && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-4 sm:p-5 rounded-2xl bg-[#FFF9EE] border-2 border-[#F7E1B5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs"
+                    >
+                        <div className="flex items-start gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-[#FEF0D4] text-[#9A6209] flex items-center justify-center shrink-0 mt-0.5">
+                                <AlertTriangle className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-xs sm:text-sm font-black text-[#192414]">
+                                        Pengingat Otomatis Sistem: Tagihan IPL Belum Lunas
+                                    </h3>
+                                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[#E65100] text-white">
+                                        PENTING
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-[#6E7864] mt-1 leading-relaxed">
+                                    Sistem mendeteksi tagihan iuran lingkungan untuk unit Anda belum terselesaikan. Harap segera bayar agar kas kebersihan dan keamanan cluster berjalan lancar.
+                                </p>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const unpaid = billItems.find((b) => b.rawStatus === 'unpaid' || b.status === 'BELUM LUNAS');
+                                if (unpaid) setSelectedInvoice(unpaid);
+                            }}
+                            className="px-4 py-2.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] active:scale-98 text-white text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                        >
+                            <CreditCard className="w-4 h-4" />
+                            <span>Bayar Sekarang (QRIS)</span>
+                        </button>
+                    </motion.div>
+                )}
 
                 {/* -------------------------------------------------------------
                     TOP FILTER BAR (Neatly aligned at the top)
@@ -1610,6 +1800,129 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                     className="w-full py-2 rounded-xl text-xs font-bold text-[#7A8A70] hover:bg-[#F0F2EB] transition-colors"
                                 >
                                     Batalkan
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* MODAL 4: QRIS PAYMENT MODAL (MIDTRANS SANDBOX FALLBACK) */}
+                {activeQrisModal && activeQrisModal.isOpen && (
+                    <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-3xl max-w-sm w-full border border-[#D2DBC5] shadow-2xl p-6 relative text-center"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setActiveQrisModal(null)}
+                                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-[#F0F2EB] text-[#7A8A70] transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+
+                            <div className="flex items-center justify-center gap-2 mb-3">
+                                <span className="text-xs font-black tracking-widest text-[#BA1A1A] bg-[#FFDAD6] px-2.5 py-0.5 rounded">
+                                    QRIS
+                                </span>
+                                <span className="text-[11px] font-bold text-[#607C3C]">
+                                    MIDTRANS SANDBOX
+                                </span>
+                            </div>
+
+                            <h3 className="font-black text-base text-[#192414] leading-snug">
+                                {activeQrisModal.title}
+                            </h3>
+                            <p className="text-[11px] text-[#7A8A70] mt-0.5">
+                                Order ID: <span className="font-mono font-bold text-[#192414]">{activeQrisModal.orderId}</span>
+                            </p>
+
+                            {/* Dynamic SVG QRIS Code */}
+                            <div className="my-4 p-4 bg-white rounded-2xl border-2 border-dashed border-[#607C3C]/40 inline-block shadow-inner">
+                                <svg
+                                    className="w-44 h-44 mx-auto"
+                                    viewBox="0 0 100 100"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <rect width="100" height="100" fill="white" />
+                                    {/* Top-Left Finder */}
+                                    <rect x="5" y="5" width="28" height="28" rx="4" fill="#192414" />
+                                    <rect x="9" y="9" width="20" height="20" rx="2" fill="white" />
+                                    <rect x="13" y="13" width="12" height="12" rx="1" fill="#607C3C" />
+                                    {/* Top-Right Finder */}
+                                    <rect x="67" y="5" width="28" height="28" rx="4" fill="#192414" />
+                                    <rect x="71" y="9" width="20" height="20" rx="2" fill="white" />
+                                    <rect x="75" y="13" width="12" height="12" rx="1" fill="#607C3C" />
+                                    {/* Bottom-Left Finder */}
+                                    <rect x="5" y="67" width="28" height="28" rx="4" fill="#192414" />
+                                    <rect x="9" y="71" width="20" height="20" rx="2" fill="white" />
+                                    <rect x="13" y="75" width="12" height="12" rx="1" fill="#607C3C" />
+                                    {/* Data Dots Pattern */}
+                                    <rect x="40" y="8" width="6" height="6" fill="#192414" />
+                                    <rect x="50" y="8" width="6" height="6" fill="#192414" />
+                                    <rect x="40" y="20" width="6" height="6" fill="#192414" />
+                                    <rect x="48" y="24" width="8" height="6" fill="#607C3C" />
+                                    <rect x="8" y="40" width="6" height="6" fill="#192414" />
+                                    <rect x="20" y="44" width="6" height="6" fill="#192414" />
+                                    <rect x="36" y="36" width="28" height="28" rx="3" fill="#EDF5E8" />
+                                    <circle cx="50" cy="50" r="8" fill="#607C3C" />
+                                    <rect x="68" y="42" width="6" height="6" fill="#192414" />
+                                    <rect x="82" y="48" width="8" height="6" fill="#192414" />
+                                    <rect x="42" y="70" width="6" height="6" fill="#192414" />
+                                    <rect x="52" y="76" width="6" height="6" fill="#607C3C" />
+                                    <rect x="70" y="70" width="6" height="6" fill="#192414" />
+                                    <rect x="80" y="78" width="8" height="6" fill="#192414" />
+                                </svg>
+                                <p className="text-[10px] font-bold text-[#7A8A70] mt-2">
+                                    NMID: ID10202611059902 • WargaPay QRIS
+                                </p>
+                            </div>
+
+                            <div className="bg-[#F7F8F4] p-3 rounded-2xl border border-[#E3EBD9] mb-4 text-xs">
+                                <div className="flex justify-between items-center text-[#7A8A70] text-[11px] mb-1">
+                                    <span>Merchant:</span>
+                                    <span className="font-bold text-[#192414]">WargaPay RT 05 Cluster Diamond</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm font-black text-[#192414]">
+                                    <span>Total Bayar:</span>
+                                    <span className="text-[#607C3C] text-base font-extrabold">
+                                        Rp {activeQrisModal.amount.toLocaleString('id-ID')}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p className="text-[11px] text-[#7A8A70] mb-4">
+                                Scan dengan GoPay, OVO, Dana, BCA, atau Livin Mandiri. Sistem akan memverifikasi status pembayaran otomatis tanpa perlu persetujuan manual admin.
+                            </p>
+
+                            <div className="space-y-2">
+                                <button
+                                    type="button"
+                                    disabled={isSimulatingQris}
+                                    onClick={handleConfirmQrisPaid}
+                                    className="w-full py-3 px-4 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] active:scale-[0.99] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                                >
+                                    {isSimulatingQris ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Memverifikasi Pembayaran...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            <span>Konfirmasi Sudah Bayar (QRIS Selesai)</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveQrisModal(null)}
+                                    className="w-full py-2 text-xs font-bold text-[#7A8A70] hover:bg-[#F0F2EB] rounded-xl transition-colors cursor-pointer"
+                                >
+                                    Batal / Bayar Nanti
                                 </button>
                             </div>
                         </motion.div>

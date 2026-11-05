@@ -13,7 +13,6 @@ import {
     CheckCircle2,
     FileText,
     LogOut,
-    Check,
     X,
     ExternalLink,
     Send,
@@ -22,7 +21,8 @@ import {
     UserCheck,
     Save,
     Building2,
-    Cloud
+    Cloud,
+    Banknote
 } from 'lucide-react';
 import logoBrand from '../assets/logo-brand.jpg';
 import {
@@ -58,11 +58,12 @@ const getInitials = (name?: string): string => {
 
 interface VerificationItem {
     id: string;
+    rawDuesId?: number;
     unit: string;
     resident: string;
     amount: string;
     method: string;
-    status: 'AUTO VERIFIED' | 'BUTUH APPROVAL' | 'VERIFIED' | 'REJECTED';
+    status: 'AUTO VERIFIED' | 'BELUM LUNAS' | 'BUTUH APPROVAL' | 'VERIFIED' | 'REJECTED';
     badgeClass: string;
     date: string;
     receiptRef: string;
@@ -180,11 +181,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             if (dues && dues.length > 0) {
                 const mapped: VerificationItem[] = dues.map((d: any, idx: number) => ({
                     id: `VER-${String(idx + 1).padStart(3, '0')}`,
+                    rawDuesId: d.id,
                     unit: `Cluster Blok B No. ${d.user_id + 10}`,
                     resident: d.user_id === 1 ? 'Pengurus RT' : d.user_id === 2 ? 'Bpk. Budi' : d.user_id === 3 ? 'Ibu Siti' : 'Bpk. Joko',
                     amount: `Rp ${d.total.toLocaleString('id-ID')}`,
-                    method: d.status === 'paid' ? 'Midtrans VA / QRIS' : 'Menunggu Bayar',
-                    status: d.status === 'paid' ? 'AUTO VERIFIED' : 'BUTUH APPROVAL',
+                    method: d.status === 'paid' ? 'Midtrans VA / QRIS' : 'Bayar Tunai di Kantor RT',
+                    status: d.status === 'paid' ? 'AUTO VERIFIED' : 'BELUM LUNAS',
                     badgeClass: d.status === 'paid' ? 'bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]' : 'bg-[#FFF8E7] text-[#9A6209] border border-[#F4DCAC]',
                     date: d.period || '2026-11',
                     receiptRef: `INV-${d.id}-${d.period}`,
@@ -410,43 +412,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         }
     ]);
 
-    // Handle Approve / Reject
-    const handleApprove = async (id: string, resident: string) => {
-        const rawId = parseInt(id.replace(/\D/g, ''), 10);
-        if (rawId) {
-            try {
-                await apiPayDuesManual(rawId);
-            } catch {
-                // local fallback
+    // Handle manual cash payment
+    const handleManualCashPay = async (item: VerificationItem) => {
+        try {
+            if (item.rawDuesId) {
+                await apiPayDuesManual(item.rawDuesId);
             }
+            setVerificationList(prev =>
+                prev.map(v =>
+                    v.id === item.id
+                        ? {
+                            ...v,
+                            status: 'VERIFIED',
+                            method: 'Tunai di Kantor RT',
+                            badgeClass: 'bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]'
+                        }
+                        : v
+                )
+            );
+            showToast(`Pembayaran tunai ${item.resident} berhasil dicatat & lunas!`);
+        } catch (err: any) {
+            showToast(err.message || 'Gagal mencatat pembayaran tunai');
         }
-        setVerificationList(prev =>
-            prev.map(item =>
-                item.id === id
-                    ? {
-                        ...item,
-                        status: 'VERIFIED',
-                        badgeClass: 'bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]'
-                    }
-                    : item
-            )
-        );
-        showToast(`Pembayaran IPL ${resident} berhasil disetujui & tercatat di kas!`);
-    };
-
-    const handleReject = (id: string, resident: string) => {
-        setVerificationList(prev =>
-            prev.map(item =>
-                item.id === id
-                    ? {
-                        ...item,
-                        status: 'REJECTED',
-                        badgeClass: 'bg-[#FDF0E9] text-[#A6461D] border border-[#F5CEBA]'
-                    }
-                    : item
-            )
-        );
-        showToast(`Pembayaran IPL ${resident} ditolak. Notifikasi dikirimkan ke warga.`);
     };
 
     // Handle add expense
@@ -542,7 +529,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const matchesBlock = blockFilter === 'Semua' || item.unit.includes(blockFilter);
         const matchesStatus =
             statusFilter === 'Semua' ||
-            (statusFilter === 'Menunggu' && item.status === 'BUTUH APPROVAL') ||
+            (statusFilter === 'Menunggu' && (item.status === 'BELUM LUNAS' || item.status === 'BUTUH APPROVAL')) ||
             (statusFilter === 'Verified' && (item.status === 'AUTO VERIFIED' || item.status === 'VERIFIED'));
 
         return matchesQuery && matchesBlock && matchesStatus;
@@ -560,7 +547,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
 
     // Pending count
-    const pendingCount = verificationList.filter(v => v.status === 'BUTUH APPROVAL').length;
+    const pendingCount = verificationList.filter(v => v.status === 'BELUM LUNAS' || v.status === 'BUTUH APPROVAL').length;
 
     return (
         <div className="fixed inset-0 z-50 w-full h-full bg-white text-[#192414] flex flex-col md:flex-row overflow-hidden font-sans antialiased selection:bg-[#607C3C] selection:text-white">
@@ -1038,14 +1025,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             >
                                                 Lihat Bukti
                                             </button>
-                                            {item.status === 'BUTUH APPROVAL' && (
+                                            {item.status === 'AUTO VERIFIED' || item.status === 'VERIFIED' ? (
+                                                <span className="px-2.5 py-1 rounded-xl bg-[#EDF5E8] text-[#2F611E] text-[11px] font-bold flex items-center gap-1 border border-[#C5DCB6]">
+                                                    <CheckCircle2 className="w-3.5 h-3.5 text-[#607C3C]" />
+                                                    <span>Lunas Otomatis</span>
+                                                </span>
+                                            ) : (
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleApprove(item.id, item.resident)}
-                                                    className="px-3.5 py-1.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6730] text-white text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                                                    onClick={() => handleManualCashPay(item)}
+                                                    className="px-3 py-1.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] active:scale-98 text-white text-xs font-bold flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
                                                 >
-                                                    <Check className="w-3.5 h-3.5" />
-                                                    <span>Setujui</span>
+                                                    <Banknote className="w-3.5 h-3.5" />
+                                                    <span>Catat Tunai</span>
                                                 </button>
                                             )}
                                         </div>
@@ -1129,29 +1121,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <button
                                             type="button"
                                             onClick={() => setSelectedProof(item)}
-                                            className="px-3 py-1.5 rounded-xl border border-[#D5DFC9] text-xs font-bold text-[#7A8A70] hover:text-[#192414] hover:bg-[#F5F6F2] transition-colors"
+                                            className="px-3 py-1.5 rounded-xl border border-[#D5DFC9] text-xs font-bold text-[#7A8A70] hover:text-[#192414] hover:bg-[#F5F6F2] transition-colors cursor-pointer"
                                         >
                                             Lihat Bukti
                                         </button>
 
-                                        {item.status === 'BUTUH APPROVAL' && (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleApprove(item.id, item.resident)}
-                                                    className="px-3.5 py-1.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6730] text-white text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
-                                                >
-                                                    <Check className="w-3.5 h-3.5" />
-                                                    <span>Setujui</span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleReject(item.id, item.resident)}
-                                                    className="px-3 py-1.5 rounded-xl border border-[#E8C5BC] hover:bg-[#FDF0E9] text-[#A6461D] text-xs font-bold transition-colors cursor-pointer"
-                                                >
-                                                    Tolak
-                                                </button>
-                                            </>
+                                        {item.status === 'AUTO VERIFIED' || item.status === 'VERIFIED' ? (
+                                            <span className="px-3 py-1.5 rounded-xl bg-[#EDF5E8] text-[#2F611E] text-xs font-extrabold flex items-center gap-1.5 border border-[#C5DCB6]">
+                                                <CheckCircle2 className="w-4 h-4 text-[#607C3C]" />
+                                                <span>Lunas (Otomatis Sistem)</span>
+                                            </span>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleManualCashPay(item)}
+                                                className="px-3.5 py-1.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] active:scale-98 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                                                title="Catat penerimaan uang tunai di kantor RT"
+                                            >
+                                                <Banknote className="w-3.5 h-3.5" />
+                                                <span>Catat Bayar Tunai (Di Kantor RT)</span>
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -1805,12 +1794,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            handleApprove(selectedProof.id, selectedProof.resident);
+                                            handleManualCashPay(selectedProof);
                                             setSelectedProof(null);
                                         }}
                                         className="px-5 py-2 rounded-xl bg-[#607C3C] hover:bg-[#4E6730] text-xs font-bold text-white transition-colors"
                                     >
-                                        Setujui Pembayaran
+                                        Catat Bayar Tunai (Di Kantor RT)
                                     </button>
                                 )}
                             </div>

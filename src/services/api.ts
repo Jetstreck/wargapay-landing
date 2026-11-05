@@ -74,6 +74,18 @@ export interface ExpenseItem {
     created_at?: string;
 }
 
+export interface NotificationItem {
+    id: string;
+    type: string;
+    title: string;
+    message: string;
+    date: string;
+    priority: string;
+    dues_id?: number;
+    amount?: number;
+    period?: string;
+}
+
 // Token & Session Storage
 export const getStoredToken = (): string | null => {
     return localStorage.getItem('wargapay_token');
@@ -258,6 +270,18 @@ export const apiGetUsers = async (): Promise<User[]> => {
 };
 
 // ========================
+// NOTIFICATIONS & REMINDERS APIS
+// ========================
+export const apiGetNotifications = async (): Promise<{ data: NotificationItem[]; unread: number }> => {
+    try {
+        const res = await request<{ message: string; data: NotificationItem[]; unread: number }>('/notifications');
+        return { data: res.data || [], unread: res.unread || 0 };
+    } catch {
+        return { data: [], unread: 0 };
+    }
+};
+
+// ========================
 // TRANSACTIONS & MIDTRANS APIS
 // ========================
 export const apiCreateTransaction = async (payload: {
@@ -318,6 +342,12 @@ export const apiGetWeather = async (lat: number = -6.2088, lon: number = 106.845
 // ========================
 // MIDTRANS POPUP HELPER (SNAP QR & PAYMENT)
 // ========================
+export const isMidtransRealToken = (token?: string): boolean => {
+    if (!token) return false;
+    if (token.startsWith('snap-sb-') || token.startsWith('mock-')) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
+};
+
 export const openMidtransSnap = (
     snapToken: string,
     redirectUrl?: string,
@@ -328,7 +358,7 @@ export const openMidtransSnap = (
         onClose?: () => void;
     }
 ) => {
-    if (typeof window !== 'undefined' && window.snap) {
+    if (typeof window !== 'undefined' && window.snap && isMidtransRealToken(snapToken)) {
         window.snap.pay(snapToken, {
             onSuccess: (result) => {
                 if (callbacks?.onSuccess) callbacks.onSuccess(result);
@@ -343,11 +373,8 @@ export const openMidtransSnap = (
                 if (callbacks?.onClose) callbacks.onClose();
             },
         });
-    } else if (redirectUrl) {
-        // Fallback jika snap.js diblokir atau gagal dimuat: buka URL Snap Midtrans di tab baru
+    } else if (redirectUrl && isMidtransRealToken(snapToken)) {
         window.open(redirectUrl, '_blank');
-    } else {
-        alert('Midtrans Snap tidak tersedia. Silakan gunakan tombol simulasi pembayaran.');
     }
 };
 
