@@ -92,7 +92,7 @@ const Hero3D = () => {
                     <h1
                         className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight text-[#192414] mb-6 drop-shadow-[0_0_12px_rgba(255,255,255,0.7)] drop-shadow-[0_1px_3px_rgba(255,255,255,0.85)]"
                     >
-                        TRANSPARANSI RT. TANPA BATAS.
+                        KELOLA LINGKUNGAN DISEKITAR.
                     </h1>
                 </motion.div>
 
