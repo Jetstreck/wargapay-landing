@@ -36,21 +36,31 @@ import {
     apiSimulatePayment,
     openMidtransSnap,
     DuesItem,
-    WeatherData
+    WeatherData,
+    User
 } from '../services/api';
 
 interface ResidentDashboardProps {
+    user?: User | null;
     onLogout?: () => void;
     onBackToHome?: () => void;
 }
 
+const getInitials = (name?: string): string => {
+    if (!name || !name.trim()) return 'WG';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
 export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
+    user,
     onLogout,
     onBackToHome
 }) => {
     // 4 Distinct Pages: 'iuran' | 'kas' | 'jadwal' | 'bantuan'
     const [activeNav, setActiveNav] = useState<'iuran' | 'kas' | 'jadwal' | 'bantuan'>('iuran');
-    
+
     // Search & Filter state
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('Semua');
@@ -64,8 +74,17 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     const [isPaying, setIsPaying] = useState(false);
 
     // Current User & Weather state
-    const [currentUser] = useState(() => getStoredUser() || { name: 'Bpk. Budi Santoso', email: 'budi@wargapay.id', role: 'user' });
+    const [currentUser, setCurrentUser] = useState<User>(() => user || getStoredUser() || { id: 0, name: 'Warga', email: 'warga@wargapay.id', role: 'user' });
     const [weatherInfo, setWeatherInfo] = useState<WeatherData | null>(null);
+
+    useEffect(() => {
+        if (user) {
+            setCurrentUser(user);
+        } else {
+            const stored = getStoredUser();
+            if (stored) setCurrentUser(stored);
+        }
+    }, [user]);
 
     const showToast = (msg: string) => {
         setToastMessage(msg);
@@ -93,6 +112,8 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                     isCurrent: d.status === 'unpaid',
                 }));
                 setBillItems(formatted);
+            } else if (data && data.length === 0) {
+                setBillItems([]);
             }
         } catch (e) {
             console.log('Menggunakan data lokal iuran:', e);
@@ -354,7 +375,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     };
 
     // Filter bills
-    const filteredBills = billItems.filter(b => 
+    const filteredBills = billItems.filter(b =>
         b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.details.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -368,7 +389,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 w-full h-full bg-white text-[#192414] flex flex-col md:flex-row overflow-hidden font-sans antialiased selection:bg-[#607C3C] selection:text-white">
-            
+
             {/* Notification Toast */}
             <AnimatePresence>
                 {toastMessage && (
@@ -390,7 +411,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                 1. SLIM MINIMALIST SIDEBAR (Full-height edge-to-edge)
                ========================================================================= */}
             <aside className="w-full md:w-[96px] h-auto md:h-screen shrink-0 bg-white border-b md:border-b-0 md:border-r border-[#E5EBDD] flex md:flex-col items-center justify-between p-4 md:py-8 md:px-3 z-20">
-                
+
                 {/* Top: Geometric Brand Logo */}
                 <div className="flex flex-col items-center gap-1">
                     <button
@@ -409,7 +430,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
 
                 {/* Middle: Icon Nav Items with tiny labels underneath */}
                 <nav className="flex md:flex-col items-center gap-2 sm:gap-4 my-auto">
-                    
+
                     {/* Menu 1: Iuran */}
                     <button
                         type="button"
@@ -419,16 +440,14 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         }}
                         className="flex flex-col items-center gap-1.5 p-2 group cursor-pointer focus:outline-none"
                     >
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
-                            activeNav === 'iuran'
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeNav === 'iuran'
                                 ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
                                 : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                        }`}>
+                            }`}>
                             <CreditCard className="w-5 h-5 stroke-[2.2]" />
                         </div>
-                        <span className={`text-[10px] font-bold tracking-tight transition-colors ${
-                            activeNav === 'iuran' ? 'text-[#607C3C]' : 'text-[#7A8A70]'
-                        }`}>
+                        <span className={`text-[10px] font-bold tracking-tight transition-colors ${activeNav === 'iuran' ? 'text-[#607C3C]' : 'text-[#7A8A70]'
+                            }`}>
                             Iuran
                         </span>
                     </button>
@@ -442,16 +461,14 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         }}
                         className="flex flex-col items-center gap-1.5 p-2 group cursor-pointer focus:outline-none"
                     >
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
-                            activeNav === 'kas'
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeNav === 'kas'
                                 ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
                                 : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                        }`}>
+                            }`}>
                             <Vault className="w-5 h-5 stroke-[2.2]" />
                         </div>
-                        <span className={`text-[10px] font-bold tracking-tight transition-colors ${
-                            activeNav === 'kas' ? 'text-[#607C3C]' : 'text-[#7A8A70]'
-                        }`}>
+                        <span className={`text-[10px] font-bold tracking-tight transition-colors ${activeNav === 'kas' ? 'text-[#607C3C]' : 'text-[#7A8A70]'
+                            }`}>
                             Kas RT
                         </span>
                     </button>
@@ -465,16 +482,14 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         }}
                         className="flex flex-col items-center gap-1.5 p-2 group cursor-pointer focus:outline-none"
                     >
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
-                            activeNav === 'jadwal'
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeNav === 'jadwal'
                                 ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
                                 : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                        }`}>
+                            }`}>
                             <Truck className="w-5 h-5 stroke-[2.2]" />
                         </div>
-                        <span className={`text-[10px] font-bold tracking-tight transition-colors ${
-                            activeNav === 'jadwal' ? 'text-[#607C3C]' : 'text-[#7A8A70]'
-                        }`}>
+                        <span className={`text-[10px] font-bold tracking-tight transition-colors ${activeNav === 'jadwal' ? 'text-[#607C3C]' : 'text-[#7A8A70]'
+                            }`}>
                             Sanitasi
                         </span>
                     </button>
@@ -488,16 +503,14 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         }}
                         className="flex flex-col items-center gap-1.5 p-2 group cursor-pointer focus:outline-none"
                     >
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
-                            activeNav === 'bantuan'
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeNav === 'bantuan'
                                 ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
                                 : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
-                        }`}>
+                            }`}>
                             <HelpCircle className="w-5 h-5 stroke-[2.2]" />
                         </div>
-                        <span className={`text-[10px] font-bold tracking-tight transition-colors ${
-                            activeNav === 'bantuan' ? 'text-[#607C3C]' : 'text-[#7A8A70]'
-                        }`}>
+                        <span className={`text-[10px] font-bold tracking-tight transition-colors ${activeNav === 'bantuan' ? 'text-[#607C3C]' : 'text-[#7A8A70]'
+                            }`}>
                             Kontak RT
                         </span>
                     </button>
@@ -508,11 +521,11 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                 <div className="flex flex-col items-center gap-2">
                     <div
                         className="relative group cursor-pointer"
-                        title="Bpk. Budi - Blok B No. 12"
-                        onClick={() => showToast('Akun Warga: Bpk. Budi (Unit B-12) Terverifikasi')}
+                        title={`${currentUser.name} (${currentUser.email})`}
+                        onClick={() => showToast(`Akun Warga: ${currentUser.name} Terverifikasi`)}
                     >
-                        <div className="w-10 h-10 rounded-full bg-[#607C3C] text-white font-extrabold text-xs flex items-center justify-center shadow-xs border border-[#4F6830]">
-                            BB
+                        <div className="w-10 h-10 rounded-full bg-[#607C3C] text-white font-extrabold text-xs flex items-center justify-center shadow-xs border border-[#4F6830] uppercase">
+                            {getInitials(currentUser.name)}
                         </div>
                         <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#2DA84E] border-2 border-white rounded-full" />
                     </div>
@@ -536,8 +549,34 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             {/* =========================================================================
                 2. MAIN CONTENT AREA (Takes remaining full screen width & height)
                ========================================================================= */}
-            <main className="flex-1 h-screen overflow-y-auto p-6 sm:p-10 lg:p-12 flex flex-col justify-between space-y-9">
-                
+            <main className="flex-1 h-screen overflow-y-auto p-6 sm:p-10 lg:p-12 flex flex-col justify-between space-y-7">
+
+                {/* Profile Header Greeting Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#D2DBC5] shadow-2xs">
+                    <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-full bg-[#607C3C] text-white font-black text-sm flex items-center justify-center border-2 border-[#4F6830] shadow-2xs uppercase shrink-0">
+                            {getInitials(currentUser.name)}
+                        </div>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h1 className="text-lg sm:text-xl font-black text-[#192414] tracking-tight truncate">
+                                    Halo, {currentUser.name}! 👋
+                                </h1>
+                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]">
+                                    Warga Aktif
+                                </span>
+                            </div>
+                            <p className="text-xs text-[#7A8A70] truncate">
+                                Terdaftar: {currentUser.email} • RT 05 / RW 08
+                            </p>
+                        </div>
+                    </div>
+                    <div className="text-left sm:text-right shrink-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A8A70] block">Cluster Domisili</span>
+                        <span className="text-xs font-bold text-[#192414]">Cluster 05 - Blok Hunian</span>
+                    </div>
+                </div>
+
                 {/* -------------------------------------------------------------
                     TOP FILTER BAR (Neatly aligned at the top)
                    ------------------------------------------------------------- */}
@@ -566,9 +605,9 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder={
                                         activeNav === 'iuran' ? 'Cari tagihan, periode, atau nominal...' :
-                                        activeNav === 'kas' ? 'Cari pengeluaran, vendor, nomor kuitansi...' :
-                                        activeNav === 'jadwal' ? 'Cari sampah organik, kardus, baterai...' :
-                                        'Cari nama pengurus, nomor telepon, satpam...'
+                                            activeNav === 'kas' ? 'Cari pengeluaran, vendor, nomor kuitansi...' :
+                                                activeNav === 'jadwal' ? 'Cari sampah organik, kardus, baterai...' :
+                                                    'Cari nama pengurus, nomor telepon, satpam...'
                                     }
                                     className="w-full bg-[#F5F6F2] hover:bg-[#EEF1EB] focus:bg-white text-xs font-semibold text-[#192414] placeholder-[#9AA992] pl-10 pr-4 py-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none transition-all"
                                 />
@@ -711,7 +750,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                     Riwayat & Tagihan Iuran Warga
                                 </h3>
                                 <span className="text-xs font-bold text-[#607C3C] bg-[#EDF5E8] px-2.5 py-1 rounded-md border border-[#C5DCB6]">
-                                    Blok B No. 12
+                                    {currentUser.name}
                                 </span>
                             </div>
                             <span className="text-xs text-[#7A8A70] font-semibold hidden sm:inline">
@@ -719,23 +758,30 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                             </span>
                         </div>
 
-                        <div className="space-y-3.5">
-                            {filteredBills.map((bill) => (
+                        {filteredBills.length === 0 ? (
+                            <div className="p-8 rounded-2xl bg-white border border-[#E5EBDD] text-center space-y-2">
+                                <CreditCard className="w-8 h-8 text-[#8FA284] mx-auto" />
+                                <h4 className="font-bold text-sm text-[#192414]">Belum Ada Tagihan Iuran</h4>
+                                <p className="text-xs text-[#7A8A70] max-w-sm mx-auto">
+                                    Tidak ada tagihan yang ditemukan untuk akun {currentUser.name}. Pengurus RT akan menerbitkan tagihan secara berkala.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3.5">
+                                {filteredBills.map((bill) => (
                                 <div
                                     key={bill.id}
                                     onClick={() => setSelectedInvoice(bill)}
-                                    className={`w-full p-5 sm:p-6 rounded-2xl bg-white border transition-all duration-200 cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                                        bill.isCurrent
+                                    className={`w-full p-5 sm:p-6 rounded-2xl bg-white border transition-all duration-200 cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-4 ${bill.isCurrent
                                             ? 'border-[#BBD0A9] shadow-[0_6px_20px_rgba(96,124,60,0.06)] hover:border-[#607C3C]'
                                             : 'border-[#E5EBDD] hover:border-[#C6D4BA] hover:shadow-[0_4px_16px_rgba(0,0,0,0.03)]'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-start sm:items-center gap-4 min-w-0">
-                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 border transition-colors ${
-                                            bill.isCurrent
+                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 border transition-colors ${bill.isCurrent
                                                 ? 'bg-[#EAF1E4] border-[#CADBBD] text-[#607C3C]'
                                                 : 'bg-[#F4F6F1] border-[#EAEFE5] text-[#7A8A70] group-hover:text-[#607C3C]'
-                                        }`}>
+                                            }`}>
                                             <CreditCard className="w-6 h-6 stroke-[2]" />
                                         </div>
 
@@ -810,6 +856,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                 </div>
                             ))}
                         </div>
+                        )}
                     </div>
                 )}
 
@@ -1013,18 +1060,16 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                             {contactList.map((contact) => (
                                 <div
                                     key={contact.id}
-                                    className={`w-full p-5 sm:p-6 rounded-2xl bg-white border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                                        contact.isEmergency
+                                    className={`w-full p-5 sm:p-6 rounded-2xl bg-white border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${contact.isEmergency
                                             ? 'border-[#E8C5BC] shadow-[0_4px_16px_rgba(180,60,40,0.04)]'
                                             : 'border-[#E5EBDD] hover:border-[#607C3C]/50'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-start sm:items-center gap-4 min-w-0">
-                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 border ${
-                                            contact.isEmergency
+                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 border ${contact.isEmergency
                                                 ? 'bg-[#FDF0E9] border-[#F5CEBA] text-[#A6461D]'
                                                 : 'bg-[#F4F6F1] border-[#EAEFE5] text-[#607C3C]'
-                                        }`}>
+                                            }`}>
                                             {contact.isEmergency ? <AlertTriangle className="w-6 h-6" /> : <UserCheck className="w-6 h-6" />}
                                         </div>
 
@@ -1033,11 +1078,10 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                                 <h4 className="font-extrabold text-sm sm:text-base text-[#192414]">
                                                     {contact.name}
                                                 </h4>
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                                    contact.isEmergency
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${contact.isEmergency
                                                         ? 'bg-[#FDF0E9] text-[#A6461D] border-[#F5CEBA]'
                                                         : 'bg-[#EDF5E8] text-[#2F611E] border-[#C5DCB6]'
-                                                }`}>
+                                                    }`}>
                                                     {contact.role}
                                                 </span>
                                             </div>
@@ -1052,7 +1096,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
 
                                     <div className="flex items-center gap-3 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-[#F5F7F2]">
                                         <a
-                                            href={`https://wa.me/6281234567890?text=Halo%20${encodeURIComponent(contact.name)}%2C%20saya%20Bpk.%20Budi%20Unit%20B-12`}
+                                            href={`https://wa.me/6281234567890?text=Halo%20${encodeURIComponent(contact.name)}%2C%20saya%20${encodeURIComponent(currentUser.name)}%20Warga%20Cluster%2005`}
                                             target="_blank"
                                             rel="noreferrer"
                                             className="px-4 py-2 rounded-xl bg-[#607C3C] hover:bg-[#4E6730] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors"
@@ -1084,7 +1128,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                             Kembali ke Beranda
                         </button>
                         <span>•</span>
-                        <span className="font-medium text-[#192414]">Unit B-12 (Bpk. Budi)</span>
+                        <span className="font-medium text-[#192414]">{currentUser.name} (Cluster 05)</span>
                     </div>
                 </div>
 
@@ -1151,11 +1195,10 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-[#7A8A70]">Status Tagihan:</span>
-                                    <span className={`font-bold px-2.5 py-0.5 rounded text-[11px] ${
-                                        selectedInvoice.status === 'LUNAS'
+                                    <span className={`font-bold px-2.5 py-0.5 rounded text-[11px] ${selectedInvoice.status === 'LUNAS'
                                             ? 'text-[#2F611E] bg-[#EDF5E8] border border-[#C5DCB6]'
                                             : 'text-[#E65100] bg-[#FFF3E0] border border-[#FFE0B2]'
-                                    }`}>
+                                        }`}>
                                         {selectedInvoice.status}
                                     </span>
                                 </div>

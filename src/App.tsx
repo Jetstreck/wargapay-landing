@@ -5,8 +5,10 @@ import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import ResidentDashboard from './components/ResidentDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import { getStoredUser, clearSession, User } from './services/api';
 
 function App() {
+    const [currentUser, setCurrentUser] = useState<User | null>(() => getStoredUser());
     const [view, setView] = useState<'landing' | 'login' | 'dashboard' | 'admin'>(() => {
         if (typeof window !== 'undefined') {
             const hash = window.location.hash;
@@ -82,6 +84,12 @@ function App() {
         window.location.hash = '#admin';
     };
 
+    const handleLogout = () => {
+        clearSession();
+        setCurrentUser(null);
+        goToLanding();
+    };
+
     return (
         <main className="w-full min-h-screen bg-[#F0F2EB] text-[#192414] selection:bg-[#607C3C] selection:text-white relative">
             <CustomCursor />
@@ -89,14 +97,18 @@ function App() {
             {/* View 1: Admin Dashboard (Pengurus RT) */}
             {view === 'admin' ? (
                 <AdminDashboard
-                    onLogout={goToLanding}
+                    key={currentUser?.email || 'admin'}
+                    user={currentUser}
+                    onLogout={handleLogout}
                     onBackToHome={goToLanding}
                     onSwitchToResident={goToDashboard}
                 />
             ) : view === 'dashboard' ? (
                 /* View 2: Resident Dashboard (Warga) */
                 <ResidentDashboard
-                    onLogout={goToLanding}
+                    key={currentUser?.email || 'resident'}
+                    user={currentUser}
+                    onLogout={handleLogout}
                     onBackToHome={goToLanding}
                 />
             ) : view === 'login' ? (
@@ -104,6 +116,8 @@ function App() {
                 <LoginPage
                     onBackToHome={goToLanding}
                     onLoginSuccess={(role) => {
+                        const user = getStoredUser();
+                        setCurrentUser(user);
                         if (role === 'admin') {
                             goToAdmin();
                         } else {

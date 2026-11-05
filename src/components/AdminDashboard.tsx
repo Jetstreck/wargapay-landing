@@ -29,14 +29,23 @@ import {
     getStoredUser,
     clearSession,
     apiGetTransactionReport,
-    apiGetDues
+    apiGetDues,
+    User
 } from '../services/api';
 
 interface AdminDashboardProps {
+    user?: User | null;
     onLogout?: () => void;
     onBackToHome?: () => void;
     onSwitchToResident?: () => void;
 }
+
+const getInitials = (name?: string): string => {
+    if (!name || !name.trim()) return 'AD';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 interface VerificationItem {
     id: string;
@@ -51,6 +60,7 @@ interface VerificationItem {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
+    user,
     onLogout,
     onBackToHome,
     onSwitchToResident
@@ -69,8 +79,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
     // Current Admin User & Backend Reports
-    const [currentUser] = useState(() => getStoredUser() || { name: 'Pengurus RT 05', email: 'admin@wargapay.id', role: 'admin' });
+    const [currentUser, setCurrentUser] = useState<User>(() => user || getStoredUser() || { id: 0, name: 'Pengurus RT 05', email: 'admin@wargapay.id', role: 'admin' });
     const [reportData, setReportData] = useState<any>(null);
+
+    useEffect(() => {
+        if (user) {
+            setCurrentUser(user);
+        } else {
+            const stored = getStoredUser();
+            if (stored) setCurrentUser(stored);
+        }
+    }, [user]);
 
     const showToast = (msg: string) => {
         setToastMessage(msg);
@@ -616,8 +635,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {/* Admin Profile & Actions */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-full bg-[#1A331E] text-white text-xs font-black flex items-center justify-center border border-[#3E5C2D]">
-                                AD
+                            <div className="w-9 h-9 rounded-full bg-[#1A331E] text-white text-xs font-black flex items-center justify-center border border-[#3E5C2D] uppercase">
+                                {getInitials(currentUser.name)}
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-bold text-[#192414] truncate">{currentUser.name}</p>
