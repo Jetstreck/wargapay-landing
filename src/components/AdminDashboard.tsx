@@ -206,7 +206,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     useEffect(() => {
         apiGetTransactionReport().then((rep) => {
             if (rep) setReportData(rep);
-        }).catch(() => {});
+        }).catch(() => { });
 
         fetchExpenses();
         fetchUsers();
@@ -229,7 +229,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 }));
                 setVerificationList(mapped);
             }
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     // Modals
@@ -473,17 +473,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             showToast('Silakan pilih warga penerima tagihan');
             return;
         }
+        let periodFormatted = (billPeriod || '2026-11').trim().replace('/', '-');
         try {
             setIsSubmittingBill(true);
             await apiCreateDues({
                 user_id: targetId,
-                period: billPeriod || '2026-11',
+                period: periodFormatted,
                 waste_fee: Number(billWasteFee) || 0,
                 security_fee: Number(billSecurityFee) || 0,
                 rt_fund: Number(billRtFund) || 0,
             });
             const targetUser = rawUsers.find(u => u.id === targetId);
-            showToast(`Tagihan IPL periode ${billPeriod} berhasil diterbitkan untuk ${targetUser?.name || 'warga'}!`);
+            showToast(`Tagihan IPL periode ${periodFormatted} berhasil diterbitkan untuk ${targetUser?.name || 'warga'}!`);
             setShowBillModal(false);
             fetchDuesForVerification();
         } catch (err: any) {
@@ -695,8 +696,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setSearchQuery('');
                             }}
                             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'overview'
-                                    ? 'bg-[#607C3C] text-white shadow-xs'
-                                    : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                                ? 'bg-[#607C3C] text-white shadow-xs'
+                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                                 }`}
                         >
                             <LayoutDashboard className="w-4 h-4" />
@@ -711,8 +712,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setSearchQuery('');
                             }}
                             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'verifikasi'
-                                    ? 'bg-[#607C3C] text-white shadow-xs'
-                                    : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                                ? 'bg-[#607C3C] text-white shadow-xs'
+                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                                 }`}
                         >
                             <div className="flex items-center gap-3">
@@ -735,8 +736,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setSearchQuery('');
                             }}
                             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'buku-kas'
-                                    ? 'bg-[#607C3C] text-white shadow-xs'
-                                    : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                                ? 'bg-[#607C3C] text-white shadow-xs'
+                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                                 }`}
                         >
                             <BookOpen className="w-4 h-4" />
@@ -751,8 +752,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setSearchQuery('');
                             }}
                             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'sanitasi'
-                                    ? 'bg-[#607C3C] text-white shadow-xs'
-                                    : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                                ? 'bg-[#607C3C] text-white shadow-xs'
+                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                                 }`}
                         >
                             <Truck className="w-4 h-4" />
@@ -767,8 +768,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setSearchQuery('');
                             }}
                             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'warga'
-                                    ? 'bg-[#607C3C] text-white shadow-xs'
-                                    : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                                ? 'bg-[#607C3C] text-white shadow-xs'
+                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                                 }`}
                         >
                             <Users className="w-4 h-4" />
@@ -783,8 +784,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setSearchQuery('');
                             }}
                             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeNav === 'settings'
-                                    ? 'bg-[#607C3C] text-white shadow-xs'
-                                    : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                                ? 'bg-[#607C3C] text-white shadow-xs'
+                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                                 }`}
                         >
                             <Settings className="w-4 h-4" />
@@ -1134,7 +1135,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
                                 <div>
                                     <h4 className="text-sm font-black text-[#192414]">
-                                        Armada Truk RT 05 - ON SCHEDULE (06:30 - 08:30 WITA)
+                                        Armada Truk RT 05 - ON SCHEDULE (06:30 - 08:30 WIB)
                                     </h4>
                                     <p className="text-xs text-[#6E7F65]">
                                         Driver: Pak Joko (0812-9988-7766) • Wilayah: Blok A, B, C Cluster Diamond
@@ -1343,7 +1344,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             Armada Truk RT 05 - ON SCHEDULE
                                         </h4>
                                         <span className="text-[10px] font-bold text-[#2F611E] bg-[#EDF5E8] px-2 py-0.5 rounded border border-[#C5DCB6]">
-                                            06:30 - 08:30 WITA
+                                            06:30 - 08:30 WIB
                                         </span>
                                     </div>
                                     <p className="text-xs text-[#6E7F65] font-semibold mt-1">
@@ -1508,11 +1509,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <button
                                             type="button"
                                             onClick={() => handleToggleUserRole(res)}
-                                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 cursor-pointer ${
-                                                (res as any).role === 'admin'
-                                                    ? 'bg-[#EDF5E8] text-[#2F611E] border-[#C5DCB6] hover:bg-[#E0EED6]'
-                                                    : 'bg-[#F4F6F1] text-[#7A8A70] border-[#D5DFC9] hover:bg-[#EAEFE5] hover:text-[#192414]'
-                                            }`}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 cursor-pointer ${(res as any).role === 'admin'
+                                                ? 'bg-[#EDF5E8] text-[#2F611E] border-[#C5DCB6] hover:bg-[#E0EED6]'
+                                                : 'bg-[#F4F6F1] text-[#7A8A70] border-[#D5DFC9] hover:bg-[#EAEFE5] hover:text-[#192414]'
+                                                }`}
                                             title="Ubah role akun ini (Admin / Warga)"
                                         >
                                             <UserCheck className="w-3.5 h-3.5" />
