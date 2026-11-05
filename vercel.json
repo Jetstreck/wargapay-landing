@@ -1,9 +1,12 @@
 {
   "rewrites": [
     {
+      "source": "/api/v1/:match*",
+      "destination": "http://139.190.102.58:9040/api/v1/:match*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
 }
-
