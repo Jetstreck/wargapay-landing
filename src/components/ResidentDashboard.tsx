@@ -40,7 +40,6 @@ import {
     apiCreateTransaction,
     apiSimulatePayment,
     openMidtransSnap,
-    isMidtransRealToken,
     DuesItem,
     ExpenseItem,
     WasteServiceItem,
@@ -86,17 +85,6 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [unreadNotifs, setUnreadNotifs] = useState(0);
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
-
-    // QRIS Payment Modal (Sandbox Demo & Real Fallback)
-    const [activeQrisModal, setActiveQrisModal] = useState<{
-        isOpen: boolean;
-        txId: number;
-        orderId: string;
-        amount: number;
-        title: string;
-        isWasteService?: boolean;
-    } | null>(null);
-    const [isSimulatingQris, setIsSimulatingQris] = useState(false);
 
     // Current User & Weather state
     const [currentUser, setCurrentUser] = useState<User>(() => user || getStoredUser() || { id: 0, name: 'Warga', email: 'warga@wargapay.id', role: 'user' });
@@ -213,57 +201,28 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                 dues_id: bill.rawId || 1,
             });
 
-            if (isMidtransRealToken(tx.snap_token)) {
-                openMidtransSnap(tx.snap_token || '', tx.snap_redirect_url, {
-                    onSuccess: () => {
-                        showToast('Pembayaran Midtrans Berhasil!');
-                        fetchDuesFromBackend();
-                        fetchNotificationsFromBackend();
-                        setSelectedInvoice(null);
-                    },
-                    onPending: () => {
-                        showToast('Menunggu pembayaran QRIS / Bank Transfer.');
-                        fetchDuesFromBackend();
-                    },
-                    onError: () => {
-                        showToast('Pembayaran gagal atau dibatalkan.');
-                    },
-                    onClose: () => {
-                        showToast('Jendela pembayaran ditutup.');
-                    },
-                });
-            } else {
-                // Fallback QRIS Modal (menghindari error "Transaksi tidak ditemukan" dari iframe sandbox)
-                setActiveQrisModal({
-                    isOpen: true,
-                    txId: tx.id,
-                    orderId: tx.order_id,
-                    amount: tx.amount,
-                    title: bill.title || 'Iuran Pengelolaan Lingkungan (IPL)',
-                    isWasteService: false,
-                });
-            }
+            openMidtransSnap(tx.snap_token || '', tx.snap_redirect_url, {
+                onSuccess: () => {
+                    showToast('Pembayaran Midtrans Berhasil!');
+                    fetchDuesFromBackend();
+                    fetchNotificationsFromBackend();
+                    setSelectedInvoice(null);
+                },
+                onPending: () => {
+                    showToast('Menunggu pembayaran QRIS / Bank Transfer.');
+                    fetchDuesFromBackend();
+                },
+                onError: () => {
+                    showToast('Pembayaran gagal atau dibatalkan.');
+                },
+                onClose: () => {
+                    showToast('Jendela pembayaran ditutup.');
+                },
+            });
         } catch (err: any) {
             showToast(err.message || 'Gagal memulai transaksi Midtrans.');
         } finally {
             setIsPaying(false);
-        }
-    };
-
-    const handleConfirmQrisPaid = async () => {
-        if (!activeQrisModal) return;
-        try {
-            setIsSimulatingQris(true);
-            await apiSimulatePayment(activeQrisModal.txId);
-            showToast(`Pembayaran ${activeQrisModal.title} Berhasil Dikonfirmasi!`);
-            setActiveQrisModal(null);
-            setSelectedInvoice(null);
-            await fetchDuesFromBackend();
-            await fetchNotificationsFromBackend();
-        } catch (err: any) {
-            showToast(err.message || 'Gagal konfirmasi pembayaran QRIS');
-        } finally {
-            setIsSimulatingQris(false);
         }
     };
 
@@ -430,32 +389,21 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             const serviceName = selectedServiceForOrder.name;
             setSelectedServiceForOrder(null);
 
-            if (isMidtransRealToken(tx.snap_token)) {
-                openMidtransSnap(tx.snap_token || '', tx.snap_redirect_url, {
-                    onSuccess: () => {
-                        showToast(`Pembayaran pesanan ${serviceName} Berhasil!`);
-                        fetchNotificationsFromBackend();
-                    },
-                    onPending: () => {
-                        showToast('Menunggu pembayaran Midtrans');
-                    },
-                    onError: () => {
-                        showToast('Pembayaran dibatalkan');
-                    },
-                    onClose: () => {
-                        showToast('Pesanan tersimpan dalam status menunggu pembayaran');
-                    },
-                });
-            } else {
-                setActiveQrisModal({
-                    isOpen: true,
-                    txId: tx.id,
-                    orderId: tx.order_id,
-                    amount: tx.amount,
-                    title: `Penjemputan Sampah: ${serviceName}`,
-                    isWasteService: true,
-                });
-            }
+            openMidtransSnap(tx.snap_token || '', tx.snap_redirect_url, {
+                onSuccess: () => {
+                    showToast(`Pembayaran pesanan ${serviceName} Berhasil!`);
+                    fetchNotificationsFromBackend();
+                },
+                onPending: () => {
+                    showToast('Menunggu pembayaran Midtrans');
+                },
+                onError: () => {
+                    showToast('Pembayaran dibatalkan');
+                },
+                onClose: () => {
+                    showToast('Pesanan tersimpan dalam status menunggu pembayaran');
+                },
+            });
         } catch (err: any) {
             setIsOrdering(false);
             showToast(err.message || 'Gagal membuat pesanan layanan sampah');
@@ -1805,130 +1753,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         </motion.div>
                     </div>
                 )}
-
-                {/* MODAL 4: QRIS PAYMENT MODAL (MIDTRANS SANDBOX FALLBACK) */}
-                {activeQrisModal && activeQrisModal.isOpen && (
-                    <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-3xl max-w-sm w-full border border-[#D2DBC5] shadow-2xl p-6 relative text-center"
-                        >
-                            <button
-                                type="button"
-                                onClick={() => setActiveQrisModal(null)}
-                                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-[#F0F2EB] text-[#7A8A70] transition-colors"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-
-                            <div className="flex items-center justify-center gap-2 mb-3">
-                                <span className="text-xs font-black tracking-widest text-[#BA1A1A] bg-[#FFDAD6] px-2.5 py-0.5 rounded">
-                                    QRIS
-                                </span>
-                                <span className="text-[11px] font-bold text-[#607C3C]">
-                                    MIDTRANS SANDBOX
-                                </span>
-                            </div>
-
-                            <h3 className="font-black text-base text-[#192414] leading-snug">
-                                {activeQrisModal.title}
-                            </h3>
-                            <p className="text-[11px] text-[#7A8A70] mt-0.5">
-                                Order ID: <span className="font-mono font-bold text-[#192414]">{activeQrisModal.orderId}</span>
-                            </p>
-
-                            {/* Dynamic SVG QRIS Code */}
-                            <div className="my-4 p-4 bg-white rounded-2xl border-2 border-dashed border-[#607C3C]/40 inline-block shadow-inner">
-                                <svg
-                                    className="w-44 h-44 mx-auto"
-                                    viewBox="0 0 100 100"
-                                    fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
-                                    <rect width="100" height="100" fill="white" />
-                                    {/* Top-Left Finder */}
-                                    <rect x="5" y="5" width="28" height="28" rx="4" fill="#192414" />
-                                    <rect x="9" y="9" width="20" height="20" rx="2" fill="white" />
-                                    <rect x="13" y="13" width="12" height="12" rx="1" fill="#607C3C" />
-                                    {/* Top-Right Finder */}
-                                    <rect x="67" y="5" width="28" height="28" rx="4" fill="#192414" />
-                                    <rect x="71" y="9" width="20" height="20" rx="2" fill="white" />
-                                    <rect x="75" y="13" width="12" height="12" rx="1" fill="#607C3C" />
-                                    {/* Bottom-Left Finder */}
-                                    <rect x="5" y="67" width="28" height="28" rx="4" fill="#192414" />
-                                    <rect x="9" y="71" width="20" height="20" rx="2" fill="white" />
-                                    <rect x="13" y="75" width="12" height="12" rx="1" fill="#607C3C" />
-                                    {/* Data Dots Pattern */}
-                                    <rect x="40" y="8" width="6" height="6" fill="#192414" />
-                                    <rect x="50" y="8" width="6" height="6" fill="#192414" />
-                                    <rect x="40" y="20" width="6" height="6" fill="#192414" />
-                                    <rect x="48" y="24" width="8" height="6" fill="#607C3C" />
-                                    <rect x="8" y="40" width="6" height="6" fill="#192414" />
-                                    <rect x="20" y="44" width="6" height="6" fill="#192414" />
-                                    <rect x="36" y="36" width="28" height="28" rx="3" fill="#EDF5E8" />
-                                    <circle cx="50" cy="50" r="8" fill="#607C3C" />
-                                    <rect x="68" y="42" width="6" height="6" fill="#192414" />
-                                    <rect x="82" y="48" width="8" height="6" fill="#192414" />
-                                    <rect x="42" y="70" width="6" height="6" fill="#192414" />
-                                    <rect x="52" y="76" width="6" height="6" fill="#607C3C" />
-                                    <rect x="70" y="70" width="6" height="6" fill="#192414" />
-                                    <rect x="80" y="78" width="8" height="6" fill="#192414" />
-                                </svg>
-                                <p className="text-[10px] font-bold text-[#7A8A70] mt-2">
-                                    NMID: ID10202611059902 • WargaPay QRIS
-                                </p>
-                            </div>
-
-                            <div className="bg-[#F7F8F4] p-3 rounded-2xl border border-[#E3EBD9] mb-4 text-xs">
-                                <div className="flex justify-between items-center text-[#7A8A70] text-[11px] mb-1">
-                                    <span>Merchant:</span>
-                                    <span className="font-bold text-[#192414]">WargaPay RT 05 Cluster Diamond</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm font-black text-[#192414]">
-                                    <span>Total Bayar:</span>
-                                    <span className="text-[#607C3C] text-base font-extrabold">
-                                        Rp {activeQrisModal.amount.toLocaleString('id-ID')}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <p className="text-[11px] text-[#7A8A70] mb-4">
-                                Scan dengan GoPay, OVO, Dana, BCA, atau Livin Mandiri. Sistem akan memverifikasi status pembayaran otomatis tanpa perlu persetujuan manual admin.
-                            </p>
-
-                            <div className="space-y-2">
-                                <button
-                                    type="button"
-                                    disabled={isSimulatingQris}
-                                    onClick={handleConfirmQrisPaid}
-                                    className="w-full py-3 px-4 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] active:scale-[0.99] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
-                                >
-                                    {isSimulatingQris ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            <span>Memverifikasi Pembayaran...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            <span>Konfirmasi Sudah Bayar (QRIS Selesai)</span>
-                                        </>
-                                    )}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveQrisModal(null)}
-                                    className="w-full py-2 text-xs font-bold text-[#7A8A70] hover:bg-[#F0F2EB] rounded-xl transition-colors cursor-pointer"
-                                >
-                                    Batal / Bayar Nanti
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+                </AnimatePresence>
 
         </div>
     );

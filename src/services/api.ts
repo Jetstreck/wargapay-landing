@@ -358,7 +358,7 @@ export const openMidtransSnap = (
         onClose?: () => void;
     }
 ) => {
-    if (typeof window !== 'undefined' && window.snap && isMidtransRealToken(snapToken)) {
+    if (typeof window !== 'undefined' && window.snap && snapToken) {
         window.snap.pay(snapToken, {
             onSuccess: (result) => {
                 if (callbacks?.onSuccess) callbacks.onSuccess(result);
