@@ -16,6 +16,8 @@
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.3",
     "gsap": "^3.12.5",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "lenis": "^1.0.42",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",

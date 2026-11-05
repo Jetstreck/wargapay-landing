@@ -14,14 +14,15 @@ import {
     FileText,
     LogOut,
     X,
-    ExternalLink,
     Send,
     DollarSign,
     Layers,
     UserCheck,
     Save,
     Building2,
-    Cloud,
+    CloudSun,
+    Droplets,
+    Wind,
     Banknote
 } from 'lucide-react';
 import logoBrand from '../assets/logo-brand.jpg';
@@ -39,10 +40,14 @@ import {
     apiGetServices,
     apiCreateService,
     apiDeleteService,
+    apiGetWeather,
+    WeatherData,
     User,
     ExpenseItem,
     WasteServiceItem
 } from '../services/api';
+import { PdfViewerModal } from './PdfViewerModal';
+import { generateInvoicePdfUrl, generateExpenseReceiptPdfUrl, generateKasReportPdfUrl } from '../utils/pdfGenerator';
 
 interface AdminDashboardProps {
     user?: User | null;
@@ -203,7 +208,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
 
     // Load backend data for Admin
+    const [weatherInfo, setWeatherInfo] = useState<WeatherData | null>(null);
+
     useEffect(() => {
+        apiGetWeather(-6.2088, 106.8456).then((w) => {
+            if (w) setWeatherInfo(w);
+        }).catch(() => { });
+
         apiGetTransactionReport().then((rep) => {
             if (rep) setReportData(rep);
         }).catch(() => { });
@@ -252,6 +263,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [newHead, setNewHead] = useState('');
     const [newPhone, setNewPhone] = useState('');
     const [newMembers, setNewMembers] = useState('3');
+
+    // PDF Viewer Modal 3rd Party State for Admin
+    const [pdfModalOpen, setPdfModalOpen] = useState(false);
+    const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+    const [pdfTitle, setPdfTitle] = useState('Dokumen Administrasi RT 05');
+    const [pdfFileName, setPdfFileName] = useState('dokumen-admin.pdf');
+
+    const openAdminInvoicePdf = (item: any) => {
+        const bill = {
+            id: item.rawDuesId || item.id || 1,
+            title: `IPL Periode ${item.date || '2026-11'}`,
+            status: item.status?.includes('LUNAS') || item.status === 'AUTO VERIFIED' ? 'LUNAS' : 'BELUM LUNAS',
+            rawStatus: item.status?.includes('LUNAS') || item.status === 'AUTO VERIFIED' ? 'paid' : 'unpaid',
+            resident: item.resident || 'Warga Cluster',
+            period: item.date || '2026-11',
+            total: 85000,
+            wasteFee: 35000,
+            securityFee: 30000,
+            rtFund: 20000,
+        };
+        const url = generateInvoicePdfUrl(bill, { name: item.resident || 'Warga Cluster', email: 'warga@wargapay.id' });
+        setPreviewPdfUrl(url);
+        setPdfTitle(`Invoice Tagihan IPL - ${item.resident || 'Unit RT 05'}`);
+        setPdfFileName(`Invoice-${item.resident || 'Warga'}.pdf`);
+        setPdfModalOpen(true);
+    };
+
+    const openAdminExpensePdf = (exp: any) => {
+        const url = generateExpenseReceiptPdfUrl(exp);
+        setPreviewPdfUrl(url);
+        setPdfTitle(`Kuitansi Kas RT: ${exp.title}`);
+        setPdfFileName(`Kuitansi-${exp.receiptNo || 'EXP'}.pdf`);
+        setPdfModalOpen(true);
+    };
+
+    const openAdminKasReportPdf = () => {
+        const url = generateKasReportPdfUrl(expenseList, reportData?.total_revenue || 42500000);
+        setPreviewPdfUrl(url);
+        setPdfTitle('Laporan Keuangan & Kas Bersama RT 05 (Resmi)');
+        setPdfFileName('Laporan-Keuangan-RT05.pdf');
+        setPdfModalOpen(true);
+    };
 
     // ==========================================
     // DATA 1: Verifikasi IPL Warga
@@ -1006,15 +1059,78 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                    ------------------------------------------------------------- */}
                 {activeNav === 'overview' && (
                     <div className="flex-1 space-y-7">
+                        {/* OpenWeather RT 05 Cluster Card */}
+                        {weatherInfo && (
+                            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#F5F8F2] via-white to-[#EEF5E8] border border-[#CFDEC4] shadow-xs">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3.5">
+                                        <div className="w-13 h-13 rounded-2xl bg-[#E1EDDA] border border-[#BBD7AF] flex items-center justify-center shrink-0 shadow-inner">
+                                            {weatherInfo.icon ? (
+                                                <img
+                                                    src={`https://openweathermap.org/img/wn/${weatherInfo.icon}@2x.png`}
+                                                    alt={weatherInfo.description}
+                                                    className="w-11 h-11 object-contain"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLElement).style.display = 'none';
+                                                    }}
+                                                />
+                                            ) : (
+                                                <CloudSun className="w-6 h-6 text-[#507030]" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-black text-[#1A2518]">
+                                                    Monitoring Cuaca Lingkungan RT 05 ({weatherInfo.location})
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#E5F3DD] text-[#3A6E1E] border border-[#C5E4B7]">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#46A218] animate-pulse" />
+                                                    OpenWeather Live
+                                                </span>
+                                            </div>
+                                            <div className="flex items-baseline gap-2 mt-0.5">
+                                                <span className="text-2xl sm:text-3xl font-black text-[#1F3316]">
+                                                    {weatherInfo.temperature.toFixed(1)}°C
+                                                </span>
+                                                <span className="text-xs font-bold text-[#4B6834]">
+                                                    {weatherInfo.description}
+                                                </span>
+                                                <span className="text-[11px] text-[#7E966F]">
+                                                    (Terasa {weatherInfo.feels_like.toFixed(1)}°C)
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 sm:gap-2.5">
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#D9E6D0] text-xs font-semibold text-[#3B4E2B] shadow-2xs">
+                                            <Droplets className="w-3.5 h-3.5 text-[#3B82F6]" />
+                                            <span>Kelembapan {weatherInfo.humidity}%</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#D9E6D0] text-xs font-semibold text-[#3B4E2B] shadow-2xs">
+                                            <Wind className="w-3.5 h-3.5 text-[#10B981]" />
+                                            <span>Angin {weatherInfo.wind_speed} m/s</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-3 pt-3 border-t border-[#E1EAD8] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <p className="text-xs text-[#3E522C] flex items-center gap-1.5 leading-relaxed">
+                                        <span className="font-bold text-[#233517]">💡 Instruksi Operasional RT:</span>
+                                        {weatherInfo.recommendation || 'Kondisi cuaca mendukung operasional rutin armada kebersihan dan pos keamanan.'}
+                                    </p>
+                                    <span className="text-[10px] font-bold text-[#355B1F] bg-[#E7F3DF] px-2.5 py-1 rounded-lg border border-[#C5E3B8] shrink-0 self-start sm:self-auto">
+                                        Armada: Siap Diterjunkan
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Section 1: Executive Financial Summary */}
                         <div className="w-full p-5 sm:p-6 rounded-2xl bg-white border border-[#E5EBDD] shadow-[0_4px_16px_rgba(0,0,0,0.03)] space-y-4">
                             <div className="flex items-center justify-between pb-3 border-b border-[#F0F3EC]">
-                                <span className="text-xs font-black uppercase tracking-wider text-[#607C3C] flex items-center gap-1.5">
-                                    <DollarSign className="w-4 h-4" />
-                                    Executive Financial & Operational Summary
-                                </span>
                                 <span className="text-[11px] text-[#7A8A70] font-semibold">
-                                    Periode: Oktober 2024
+                                    Periode: {new Date().getFullYear()} - {String(new Date().getMonth() + 1).padStart(2, '0')}
                                 </span>
                             </div>
 
@@ -1101,10 +1217,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <div className="flex items-center gap-2 shrink-0">
                                             <button
                                                 type="button"
-                                                onClick={() => setSelectedProof(item)}
-                                                className="px-3 py-1.5 rounded-xl border border-[#D5DFC9] text-xs font-bold text-[#7A8A70] hover:text-[#192414] hover:bg-[#F5F6F2] transition-colors"
+                                                onClick={() => openAdminInvoicePdf(item)}
+                                                className="px-3 py-1.5 rounded-xl border border-[#D5DFC9] text-xs font-bold text-[#607C3C] hover:text-white hover:bg-[#607C3C] transition-all flex items-center gap-1 cursor-pointer"
                                             >
-                                                Lihat Bukti
+                                                <FileText className="w-3.5 h-3.5" />
+                                                <span>Invoice PDF</span>
                                             </button>
                                             {item.status === 'AUTO VERIFIED' || item.status === 'VERIFIED' ? (
                                                 <span className="px-2.5 py-1 rounded-xl bg-[#EDF5E8] text-[#2F611E] text-[11px] font-bold flex items-center gap-1 border border-[#C5DCB6]">
@@ -1252,11 +1369,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <div className="flex flex-wrap items-center gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => showToast('Membuka Folder Google Drive Kas RT 05...')}
-                                    className="px-3.5 py-2 rounded-xl bg-white border border-[#D5DFC9] text-xs font-bold text-[#192414] hover:bg-[#F0F2EB] transition-colors flex items-center gap-1.5 shadow-2xs"
+                                    onClick={openAdminKasReportPdf}
+                                    className="px-3.5 py-2 rounded-xl bg-white border border-[#D5DFC9] text-xs font-bold text-[#192414] hover:bg-[#F0F2EB] transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
                                 >
-                                    <ExternalLink className="w-3.5 h-3.5 text-[#607C3C]" />
-                                    <span>Folder GDrive</span>
+                                    <FileText className="w-3.5 h-3.5 text-[#607C3C]" />
+                                    <span>Laporan Kas PDF</span>
                                 </button>
                                 <button
                                     type="button"
@@ -1275,9 +1392,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <h3 className="text-lg sm:text-xl font-black text-[#192414] tracking-tight">
                                     Daftar Pengeluaran & Operasional RT 05
                                 </h3>
-                                <span className="text-xs font-bold text-[#607C3C] bg-[#EDF5E8] px-2.5 py-1 rounded-md border border-[#C5DCB6]">
-                                    Audit Multi-Sig 3 Kunci
-                                </span>
                             </div>
 
                             <div className="space-y-3">
@@ -1314,11 +1428,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => showToast(`Membuka berkas GDrive: ${exp.gdriveRef}`)}
-                                                className="p-2 rounded-xl text-[#7A8A70] hover:text-[#607C3C] hover:bg-[#F4F6F1] transition-colors"
-                                                title="Lihat di Google Drive"
+                                                onClick={() => openAdminExpensePdf(exp)}
+                                                className="px-3 py-1.5 rounded-xl bg-[#EDF5E8] hover:bg-[#607C3C] text-[#2F611E] hover:text-white border border-[#C5DCB6] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                                                title="Preview Kuitansi PDF Langsung"
                                             >
-                                                <ExternalLink className="w-4 h-4" />
+                                                <FileText className="w-3.5 h-3.5" />
+                                                <span>Kuitansi PDF</span>
                                             </button>
                                         </div>
                                     </div>
@@ -1550,7 +1665,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     Pengaturan Sistem & Parameter RT 05
                                 </h3>
                                 <p className="text-xs text-[#6E7F65] mt-0.5">
-                                    Konfigurasi rekening giro bank, tarif IPL, dan integrasi GDrive
+                                    Konfigurasi rekening giro bank dan tarif IPL
                                 </p>
                             </div>
                         </div>
@@ -1604,25 +1719,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <p><strong className="text-[#192414]">Auto-Match VA:</strong> Aktif (Verifikasi instan via Webhook)</p>
                                 </div>
                             </div>
-
-                            {/* Card 3: Cloud Backup Google Drive */}
-                            <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E5EBDD] space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-[#EDF5E8] text-[#607C3C] flex items-center justify-center font-bold">
-                                        <Cloud className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-black text-sm text-[#192414]">Integrasi Google Drive Buku Kas</h4>
-                                        <p className="text-xs text-[#6E7F65]">Pencatatan nota, kuitansi digital, dan audit keuangan</p>
-                                    </div>
-                                </div>
-
-                                <div className="p-3.5 rounded-xl bg-[#F6F8F3] border border-[#D8E2D0] space-y-1 text-xs">
-                                    <p><strong className="text-[#192414]">Akun Terhubung:</strong> sekretariat.rt05.diamond@gmail.com</p>
-                                    <p><strong className="text-[#192414]">Folder Sinkronisasi:</strong> GDrive/KasRT05/2024-10/</p>
-                                    <p><strong className="text-[#192414]">Status Sync:</strong> Real-time Terkoneksi</p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -1634,12 +1730,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-[#2DA84E] animate-pulse" />
                         <span className="font-semibold text-[#192414]">
-                            WargaPay Admin Core v2.4 • RT 05 Cluster Diamond
+                            WargaPay Admin • RT 05 Cluster Diamond
                         </span>
                     </div>
                     <div className="flex items-center gap-4">
                         <span className="text-[#6E7F65]">
-                            Logged in as: <strong className="text-[#192414]">Bendahara RT (Pak Bambang)</strong> • Synchronized Real-time
+                            Logged in as: <strong className="text-[#192414]">Bendahara RT (Pak Bambang)</strong>
                         </span>
                     </div>
                 </div>
@@ -1944,6 +2040,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 >
                                     Tutup
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        openAdminInvoicePdf(selectedProof);
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-[#1A331E] hover:bg-[#25442A] text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                                >
+                                    <FileText className="w-3.5 h-3.5" />
+                                    <span>Preview PDF Resmi</span>
+                                </button>
                                 {selectedProof.status === 'BUTUH APPROVAL' && (
                                     <button
                                         type="button"
@@ -2220,6 +2326,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* 3rd Party Live PDF Viewer Pop-up Modal for Admin */}
+            <PdfViewerModal
+                isOpen={pdfModalOpen}
+                onClose={() => {
+                    setPdfModalOpen(false);
+                    if (previewPdfUrl) {
+                        URL.revokeObjectURL(previewPdfUrl);
+                        setPreviewPdfUrl(null);
+                    }
+                }}
+                pdfUrl={previewPdfUrl}
+                title={pdfTitle}
+                fileName={pdfFileName}
+            />
 
         </div>
     );

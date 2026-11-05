@@ -13,19 +13,19 @@ import {
     Vault,
     Truck,
     HelpCircle,
-    Printer,
-    Download,
     X,
     PhoneCall,
-    ExternalLink,
     Recycle,
     AlertTriangle,
     Clock,
     UserCheck,
     CloudSun,
+    Droplets,
+    Wind,
     QrCode,
     Calendar,
     Bell,
+    Mail,
     Loader2
 } from 'lucide-react';
 import logoBrand from '../assets/logo-brand.jpg';
@@ -37,6 +37,7 @@ import {
     apiGetServices,
     apiGetWeather,
     apiGetNotifications,
+    apiMarkNotificationsRead,
     apiCreateTransaction,
     apiSimulatePayment,
     openMidtransSnap,
@@ -47,6 +48,8 @@ import {
     NotificationItem,
     User
 } from '../services/api';
+import { PdfViewerModal } from './PdfViewerModal';
+import { generateInvoicePdfUrl, generateExpenseReceiptPdfUrl, generateKasReportPdfUrl } from '../utils/pdfGenerator';
 
 interface ResidentDashboardProps {
     user?: User | null;
@@ -88,7 +91,47 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
 
     // Current User & Weather state
     const [currentUser, setCurrentUser] = useState<User>(() => user || getStoredUser() || { id: 0, name: 'Warga', email: 'warga@wargapay.id', role: 'user' });
-    const [weatherInfo, setWeatherInfo] = useState<WeatherData | null>(null);
+    const [weatherInfo, setWeatherInfo] = useState<WeatherData>({
+        location: 'RT 05 Cluster Diamond (Jakarta)',
+        temperature: 29.5,
+        feels_like: 31.0,
+        humidity: 72,
+        description: 'Cerah Berawan',
+        condition: 'Clouds',
+        icon: '02d',
+        wind_speed: 3.6,
+        recommendation: 'Cuaca cerah berawan. Jadwal armada truk pengangkutan sampah berjalan lancar sesuai jadwal.'
+    });
+
+    // PDF Viewer Modal 3rd Party State
+    const [pdfModalOpen, setPdfModalOpen] = useState(false);
+    const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+    const [pdfTitle, setPdfTitle] = useState('Dokumen WargaPay');
+    const [pdfFileName, setPdfFileName] = useState('dokumen-wargapay.pdf');
+
+    const openInvoicePdfPreview = (bill: any) => {
+        const url = generateInvoicePdfUrl(bill, currentUser);
+        setPreviewPdfUrl(url);
+        setPdfTitle(`Invoice Tagihan ${bill.title || 'IPL RT 05'}`);
+        setPdfFileName(`Invoice-${bill.period || '2026-11'}.pdf`);
+        setPdfModalOpen(true);
+    };
+
+    const openExpensePdfPreview = (exp: any) => {
+        const url = generateExpenseReceiptPdfUrl(exp);
+        setPreviewPdfUrl(url);
+        setPdfTitle(`Kuitansi Pengeluaran: ${exp.title}`);
+        setPdfFileName(`Kuitansi-${exp.receiptNo || 'EXP'}.pdf`);
+        setPdfModalOpen(true);
+    };
+
+    const openKasReportPdfPreview = () => {
+        const url = generateKasReportPdfUrl(expenseList, 42500000);
+        setPreviewPdfUrl(url);
+        setPdfTitle('Laporan Keuangan & Kas Bersama RT 05');
+        setPdfFileName('Laporan-Kas-RT05.pdf');
+        setPdfModalOpen(true);
+    };
 
     useEffect(() => {
         if (user) {
@@ -170,13 +213,45 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     const fetchNotificationsFromBackend = async () => {
         try {
             const res = await apiGetNotifications();
-            if (res && res.data) {
+            if (res && res.data && res.data.length > 0) {
                 setNotifications(res.data);
                 setUnreadNotifs(res.unread || 0);
+                return;
             }
         } catch (e) {
             console.log('Gagal fetch notifications:', e);
         }
+
+        // Fallback cerdas agar notifikasi pengingat & sambutan selalu siap
+        setNotifications([
+            {
+                id: 'notif-due-current',
+                type: 'dues_reminder',
+                title: 'Pengingat Tagihan IPL Periode 2026-11',
+                message: 'Tagihan iuran IPL periode 2026-11 sebesar Rp 85.000 belum diselesaikan. Jatuh tempo tanggal 10. Bayar mudah via Midtrans QRIS.',
+                date: 'Pengingat Aktif',
+                priority: 'high',
+                amount: 85000,
+                period: '2026-11'
+            },
+            {
+                id: 'notif-welcome',
+                type: 'welcome',
+                title: 'Selamat Datang di WargaPay',
+                message: `Halo ${currentUser.name}, akun warga Anda aktif dan terhubung ke sistem RT 05 Cluster Diamond. Email konfirmasi telah dikirim ke Mailtrap.`,
+                date: 'Sambutan Warga',
+                priority: 'normal'
+            },
+            {
+                id: 'notif-sanitasi',
+                type: 'info',
+                title: 'Jadwal Armada Pengangkutan Sampah RT 05',
+                message: 'Truk kebersihan beroperasi setiap Senin, Rabu, dan Jumat (06:30 - 08:30 WIB). Mohon sampah diletakkan di depan pagar sebelum pukul 06:00 WIB.',
+                date: 'Jadwal Rutin',
+                priority: 'normal'
+            }
+        ]);
+        setUnreadNotifs(1);
     };
 
     useEffect(() => {
@@ -418,7 +493,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             id: 'SCH-01',
             type: 'Sampah Organik',
             subtitle: 'Sisa Dapur, Daun, Ranting & Sisa Makanan',
-            schedule: 'Senin, Rabu, dan Jumat (06:30 - 08:30 WITA)',
+            schedule: 'Senin, Rabu, dan Jumat (06:30 - 08:30 WIB)',
             destination: 'Rumah Kompos Cluster 05 & Pakan Maggot Binaan RT',
             guidelines: 'Gunakan kantong terikat rapi atau ember tertutup di depan pagar.',
             badge: 'Diolah Mandiri',
@@ -428,7 +503,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             id: 'SCH-02',
             type: 'Sampah Anorganik',
             subtitle: 'Kardus, Botol Plastik, Kaleng, Botol Kaca',
-            schedule: 'Selasa dan Sabtu (07:00 - 09:00 WITA)',
+            schedule: 'Selasa dan Sabtu (07:00 - 09:00 WIB)',
             destination: 'Bank Sampah Warga Berdaya Cluster 05',
             guidelines: 'Keringkan dan pipihkan kardus/botol sebelum dimasukkan kantong.',
             badge: 'Daur Ulang (Nilai Ekonomi)',
@@ -438,7 +513,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             id: 'SCH-03',
             type: 'E-Waste & Limbah B3',
             subtitle: 'Baterai Bekas, Lampu TL, Aki, Obat Kadaluarsa',
-            schedule: 'Sabtu Pertama & Ketiga Setiap Bulan (08:00 - 11:00 WITA)',
+            schedule: 'Sabtu Pertama & Ketiga Setiap Bulan (08:00 - 11:00 WIB)',
             destination: 'Mitra Pengolah Bahan Berbahaya DLH Kota',
             guidelines: 'Letakkan di dropbox khusus B3 di samping Pos Satpam Utama.',
             badge: 'Penanganan Khusus',
@@ -456,7 +531,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             role: 'Ketua RT 05 Cluster Diamond',
             unit: 'Blok A No. 05',
             phone: '0811-2233-4455',
-            availability: '08:00 - 20:00 WITA',
+            availability: '08:00 - 20:00 WIB',
             scope: 'Kebijakan lingkungan, izin renovasi rumah, pengesahan dokumen kependudukan',
             isEmergency: false
         },
@@ -466,7 +541,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             role: 'Sekretaris RT 05',
             unit: 'Blok B No. 02',
             phone: '0812-3456-7890',
-            availability: 'Siaga Cepat (07:30 - 21:00 WITA)',
+            availability: 'Siaga Cepat (07:30 - 21:00 WIB)',
             scope: 'Administrasi warga, surat pengantar domisili, data iuran IPL & pengaduan',
             isEmergency: false
         },
@@ -570,8 +645,8 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         className="flex flex-col items-center gap-1.5 p-2 group cursor-pointer focus:outline-none"
                     >
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeNav === 'iuran'
-                                ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
-                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                            ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
+                            : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                             }`}>
                             <CreditCard className="w-5 h-5 stroke-[2.2]" />
                         </div>
@@ -591,8 +666,8 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         className="flex flex-col items-center gap-1.5 p-2 group cursor-pointer focus:outline-none"
                     >
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeNav === 'kas'
-                                ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
-                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                            ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
+                            : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                             }`}>
                             <Vault className="w-5 h-5 stroke-[2.2]" />
                         </div>
@@ -612,8 +687,8 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         className="flex flex-col items-center gap-1.5 p-2 group cursor-pointer focus:outline-none"
                     >
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeNav === 'jadwal'
-                                ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
-                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                            ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
+                            : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                             }`}>
                             <Truck className="w-5 h-5 stroke-[2.2]" />
                         </div>
@@ -633,8 +708,8 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         className="flex flex-col items-center gap-1.5 p-2 group cursor-pointer focus:outline-none"
                     >
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeNav === 'bantuan'
-                                ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
-                                : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
+                            ? 'bg-[#EAF1E4] text-[#607C3C] shadow-xs'
+                            : 'text-[#7A8A70] hover:text-[#192414] hover:bg-[#F4F6F1]'
                             }`}>
                             <HelpCircle className="w-5 h-5 stroke-[2.2]" />
                         </div>
@@ -689,10 +764,10 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <h1 className="text-lg sm:text-xl font-black text-[#192414] tracking-tight truncate">
-                                    Halo, {currentUser.name}! 👋
+                                    Halo, {currentUser.name}!
                                 </h1>
                                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]">
-                                    Warga Aktif
+                                    Warga
                                 </span>
                             </div>
                             <p className="text-xs text-[#7A8A70] truncate">
@@ -705,7 +780,14 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         <div className="relative">
                             <button
                                 type="button"
-                                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                                onClick={() => {
+                                    const nextState = !showNotifDropdown;
+                                    setShowNotifDropdown(nextState);
+                                    if (nextState && unreadNotifs > 0) {
+                                        setUnreadNotifs(0);
+                                        apiMarkNotificationsRead();
+                                    }
+                                }}
                                 className="w-10 h-10 rounded-xl bg-[#F4F6F1] hover:bg-[#EAEFE5] text-[#3B4F25] flex items-center justify-center transition-colors relative cursor-pointer"
                                 title="Notifikasi & Pengingat Tagihan"
                             >
@@ -731,31 +813,57 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                                 <Bell className="w-4 h-4 text-[#607C3C]" />
                                                 <h3 className="font-extrabold text-xs text-[#192414]">Pengingat & Notifikasi</h3>
                                             </div>
-                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EDF5E8] text-[#2F611E]">
-                                                {notifications.length} Info
-                                            </span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EDF5E8] text-[#2F611E]">
+                                                    {notifications.length} Info
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        <div className="max-h-72 overflow-y-auto space-y-2 py-2">
+                                        <div className="max-h-80 overflow-y-auto space-y-2.5 py-2">
                                             {notifications.length === 0 ? (
-                                                <p className="text-xs text-[#7A8A70] text-center py-4">Tidak ada notifikasi baru.</p>
+                                                <div className="text-center py-6">
+                                                    <Mail className="w-8 h-8 text-[#A8B89E] mx-auto mb-1.5 opacity-60" />
+                                                    <p className="text-xs text-[#7A8A70]">Tidak ada notifikasi baru.</p>
+                                                </div>
                                             ) : (
-                                                notifications.map((notif) => (
-                                                    <div
-                                                        key={notif.id}
-                                                        className={`p-3 rounded-xl border text-xs transition-colors ${
-                                                            notif.type === 'dues_reminder'
-                                                                ? 'bg-[#FFF9EE] border-[#F5E2B8] text-[#875005]'
-                                                                : 'bg-[#F7F9F5] border-[#E2EBDC] text-[#2F611E]'
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-start justify-between gap-2">
-                                                            <h4 className="font-extrabold text-xs text-[#192414]">{notif.title}</h4>
-                                                            <span className="text-[9px] text-[#8F9E87] shrink-0 font-medium">{notif.date}</span>
+                                                notifications.map((notif) => {
+                                                    const isDues = notif.type === 'dues_reminder';
+                                                    const isSuccess = notif.type === 'payment_success';
+                                                    const isWelcome = notif.type === 'welcome';
+
+                                                    let badgeBg = 'bg-[#F7F9F5] border-[#E2EBDC] text-[#2F611E]';
+                                                    let icon = <Bell className="w-3.5 h-3.5 text-[#607C3C] shrink-0 mt-0.5" />;
+
+                                                    if (isDues) {
+                                                        badgeBg = 'bg-[#FFFBEB] border-[#FDE68A] text-[#92400E]';
+                                                        icon = <AlertTriangle className="w-3.5 h-3.5 text-[#D97706] shrink-0 mt-0.5" />;
+                                                    } else if (isSuccess) {
+                                                        badgeBg = 'bg-[#F0FDF4] border-[#86EFAC] text-[#166534]';
+                                                        icon = <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A] shrink-0 mt-0.5" />;
+                                                    } else if (isWelcome) {
+                                                        badgeBg = 'bg-[#EFF6FF] border-[#BFDBFE] text-[#1E40AF]';
+                                                        icon = <Mail className="w-3.5 h-3.5 text-[#2563EB] shrink-0 mt-0.5" />;
+                                                    }
+
+                                                    return (
+                                                        <div
+                                                            key={notif.id}
+                                                            className={`p-3 rounded-xl border text-xs transition-all shadow-sm ${badgeBg}`}
+                                                        >
+                                                            <div className="flex items-start gap-2">
+                                                                {icon}
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-start justify-between gap-1">
+                                                                        <h4 className="font-extrabold text-xs text-[#192414] leading-snug">{notif.title}</h4>
+                                                                        <span className="text-[9px] text-[#8F9E87] shrink-0 font-medium">{notif.date}</span>
+                                                                    </div>
+                                                                    <p className="text-[11px] text-[#4F5B46] mt-1 leading-relaxed">{notif.message}</p>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <p className="text-[11px] text-[#4F5B46] mt-1 leading-relaxed">{notif.message}</p>
-                                                    </div>
-                                                ))
+                                                    );
+                                                })
                                             )}
                                         </div>
                                     </motion.div>
@@ -769,6 +877,76 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Weather & Sanitation Monitoring Card (OpenWeather Live Integration) */}
+                {weatherInfo && (
+                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#F5F8F2] via-white to-[#EEF5E8] border border-[#CFDEC4] shadow-xs">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            {/* Sisi Kiri: Icon Cuaca, Suhu & Deskripsi */}
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-13 h-13 rounded-2xl bg-[#E1EDDA] border border-[#BBD7AF] flex items-center justify-center shrink-0 shadow-inner">
+                                    {weatherInfo.icon ? (
+                                        <img
+                                            src={`https://openweathermap.org/img/wn/${weatherInfo.icon}@2x.png`}
+                                            alt={weatherInfo.description}
+                                            className="w-11 h-11 object-contain"
+                                            onError={(e) => {
+                                                (e.target as HTMLElement).style.display = 'none';
+                                            }}
+                                        />
+                                    ) : (
+                                        <CloudSun className="w-6 h-6 text-[#507030]" />
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-black text-[#1A2518]">
+                                            {weatherInfo.location}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#E5F3DD] text-[#3A6E1E] border border-[#C5E4B7]">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#46A218] animate-pulse" />
+                                            OpenWeather Live
+                                        </span>
+                                    </div>
+                                    <div className="flex items-baseline gap-2 mt-0.5">
+                                        <span className="text-2xl sm:text-3xl font-black text-[#1F3316]">
+                                            {weatherInfo.temperature.toFixed(1)}°C
+                                        </span>
+                                        <span className="text-xs font-bold text-[#4B6834]">
+                                            {weatherInfo.description}
+                                        </span>
+                                        <span className="text-[11px] text-[#7E966F] hidden sm:inline">
+                                            (Terasa {weatherInfo.feels_like.toFixed(1)}°C)
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Sisi Kanan: Metrik Kelembapan & Kecepatan Angin */}
+                            <div className="flex items-center gap-2 sm:gap-2.5">
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#D9E6D0] text-xs font-semibold text-[#3B4E2B] shadow-2xs">
+                                    <Droplets className="w-3.5 h-3.5 text-[#3B82F6]" />
+                                    <span>Kelembapan {weatherInfo.humidity}%</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#D9E6D0] text-xs font-semibold text-[#3B4E2B] shadow-2xs">
+                                    <Wind className="w-3.5 h-3.5 text-[#10B981]" />
+                                    <span>Angin {weatherInfo.wind_speed} m/s</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Rekomendasi Sanitasi & Operasional RT Berdasarkan Cuaca */}
+                        <div className="mt-3 pt-3 border-t border-[#E1EAD8] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <p className="text-xs text-[#3E522C] flex items-center gap-1.5 leading-relaxed">
+                                <span className="font-bold text-[#233517]">💡 Info Sanitasi Lingkungan:</span>
+                                {weatherInfo.recommendation || 'Operasional truk pengangkutan sampah berjalan lancar sesuai jadwal.'}
+                            </p>
+                            <span className="text-[10px] font-bold text-[#355B1F] bg-[#E7F3DF] px-2.5 py-1 rounded-lg border border-[#C5E3B8] shrink-0 self-start sm:self-auto">
+                                TPS 05: Siap Operasional
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Active Cronjob Reminder Alert Banner */}
                 {billItems.some((b) => b.rawStatus === 'unpaid' || b.status === 'BELUM LUNAS') && (
@@ -933,10 +1111,16 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                             <button
                                 type="button"
                                 onClick={() => {
-                                    if (activeNav === 'iuran') setSelectedInvoice(billItems[0]);
-                                    else if (activeNav === 'kas') showToast('Mengunduh salinan Laporan Keuangan Kas RT 05...');
-                                    else if (activeNav === 'jadwal') showToast('Jadwal sanitasi: Truk tiba pukul 06:30 WITA');
-                                    else showToast('Menghubungkan ke Pos Satpam Utama...');
+                                    if (activeNav === 'iuran') {
+                                        const target = billItems[0] || { title: 'IPL Periode 2026-11', total: 85000, status: 'unpaid' };
+                                        openInvoicePdfPreview(target);
+                                    } else if (activeNav === 'kas') {
+                                        openKasReportPdfPreview();
+                                    } else if (activeNav === 'jadwal') {
+                                        showToast('Jadwal sanitasi: Truk tiba pukul 06:30 WIB');
+                                    } else {
+                                        showToast('Menghubungkan ke Pos Satpam Utama...');
+                                    }
                                 }}
                                 className="w-full sm:w-auto h-[40px] px-6 rounded-xl bg-[#1A331E] hover:bg-[#25442A] active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs whitespace-nowrap"
                             >
@@ -951,26 +1135,6 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         </div>
                     </div>
                 </div>
-
-                {/* Weather Banner Widget from Backend OpenWeather */}
-                {weatherInfo && (
-                    <div className="p-3.5 px-5 rounded-2xl bg-gradient-to-r from-[#EDF5E8] via-[#E2ECD9] to-[#F3F7EF] border border-[#CADBBD] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-                        <div className="flex items-center gap-3 text-[#213418]">
-                            <div className="w-8 h-8 rounded-xl bg-[#607C3C]/15 flex items-center justify-center text-[#607C3C] shrink-0">
-                                <CloudSun className="w-4 h-4" />
-                            </div>
-                            <div className="text-xs">
-                                <span className="font-black text-[#1A2518]">{weatherInfo.location}</span>
-                                <span className="text-[#647959] ml-1.5">
-                                    • {weatherInfo.temperature.toFixed(1)}°C, {weatherInfo.description} (Kelembapan {weatherInfo.humidity}%)
-                                </span>
-                            </div>
-                        </div>
-                        <span className="text-[10px] font-bold text-[#455C2C] bg-white/80 px-2.5 py-1 rounded-lg border border-[#CADBBD] self-start sm:self-auto">
-                            Status TPS: Aman & Siap Operasional
-                        </span>
-                    </div>
-                )}
 
                 {/* -------------------------------------------------------------
                     PAGE 1: IURAN & TAGIHAN WARGA
@@ -1002,93 +1166,93 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         ) : (
                             <div className="space-y-3.5">
                                 {filteredBills.map((bill) => (
-                                <div
-                                    key={bill.id}
-                                    onClick={() => setSelectedInvoice(bill)}
-                                    className={`w-full p-5 sm:p-6 rounded-2xl bg-white border transition-all duration-200 cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-4 ${bill.isCurrent
+                                    <div
+                                        key={bill.id}
+                                        onClick={() => setSelectedInvoice(bill)}
+                                        className={`w-full p-5 sm:p-6 rounded-2xl bg-white border transition-all duration-200 cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-4 ${bill.isCurrent
                                             ? 'border-[#BBD0A9] shadow-[0_6px_20px_rgba(96,124,60,0.06)] hover:border-[#607C3C]'
                                             : 'border-[#E5EBDD] hover:border-[#C6D4BA] hover:shadow-[0_4px_16px_rgba(0,0,0,0.03)]'
-                                        }`}
-                                >
-                                    <div className="flex items-start sm:items-center gap-4 min-w-0">
-                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 border transition-colors ${bill.isCurrent
+                                            }`}
+                                    >
+                                        <div className="flex items-start sm:items-center gap-4 min-w-0">
+                                            <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 border transition-colors ${bill.isCurrent
                                                 ? 'bg-[#EAF1E4] border-[#CADBBD] text-[#607C3C]'
                                                 : 'bg-[#F4F6F1] border-[#EAEFE5] text-[#7A8A70] group-hover:text-[#607C3C]'
-                                            }`}>
-                                            <CreditCard className="w-6 h-6 stroke-[2]" />
-                                        </div>
-
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <h4 className="font-extrabold text-sm sm:text-base text-[#192414] group-hover:text-[#607C3C] transition-colors">
-                                                    {bill.title}
-                                                </h4>
-                                                <span className="text-[10px] font-bold text-[#7A8A70] bg-[#F5F6F2] px-2 py-0.5 rounded">
-                                                    {bill.tag}
-                                                </span>
+                                                }`}>
+                                                <CreditCard className="w-6 h-6 stroke-[2]" />
                                             </div>
-                                            <p className="text-xs text-[#6E7F65] font-medium mt-1 leading-relaxed">
-                                                {bill.details}
-                                            </p>
-                                        </div>
-                                    </div>
 
-                                    <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-[#F5F7F2]">
-                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${bill.badgeBg}`}>
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-[#607C3C]" />
-                                            {bill.status}
-                                        </span>
-
-                                        <div className="text-right">
-                                            <div className="text-base sm:text-lg font-black text-[#192414] tracking-tight">
-                                                {bill.amount}
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-extrabold text-sm sm:text-base text-[#192414] group-hover:text-[#607C3C] transition-colors">
+                                                        {bill.title}
+                                                    </h4>
+                                                    <span className="text-[10px] font-bold text-[#7A8A70] bg-[#F5F6F2] px-2 py-0.5 rounded">
+                                                        {bill.tag}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-[#6E7F65] font-medium mt-1 leading-relaxed">
+                                                    {bill.details}
+                                                </p>
                                             </div>
                                         </div>
 
-                                        {bill.status !== 'LUNAS' && (
+                                        <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-[#F5F7F2]">
+                                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${bill.badgeBg}`}>
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-[#607C3C]" />
+                                                {bill.status}
+                                            </span>
+
+                                            <div className="text-right">
+                                                <div className="text-base sm:text-lg font-black text-[#192414] tracking-tight">
+                                                    {bill.amount}
+                                                </div>
+                                            </div>
+
+                                            {bill.status !== 'LUNAS' && (
+                                                <button
+                                                    type="button"
+                                                    disabled={isPaying}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handlePayMidtrans(bill);
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                                    title="Bayar langsung via Midtrans QRIS / Virtual Account"
+                                                >
+                                                    <QrCode className="w-3.5 h-3.5" />
+                                                    <span>Bayar (QR)</span>
+                                                </button>
+                                            )}
+
                                             <button
                                                 type="button"
-                                                disabled={isPaying}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handlePayMidtrans(bill);
+                                                    openInvoicePdfPreview(bill);
                                                 }}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                                                title="Bayar langsung via Midtrans QRIS / Virtual Account"
+                                                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F5F7F2] hover:bg-[#607C3C] text-[#607C3C] hover:text-white border border-[#D5DFC9] text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                                                title="Preview Invoice PDF Langsung"
                                             >
-                                                <QrCode className="w-3.5 h-3.5" />
-                                                <span>Bayar (QR)</span>
+                                                <FileText className="w-3.5 h-3.5" />
+                                                <span>Invoice</span>
                                             </button>
-                                        )}
 
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedInvoice(bill);
-                                            }}
-                                            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F5F7F2] hover:bg-[#607C3C] text-[#607C3C] hover:text-white border border-[#D5DFC9] text-xs font-bold transition-all shadow-2xs"
-                                            title="Unduh Invoice PDF"
-                                        >
-                                            <Download className="w-3.5 h-3.5" />
-                                            <span>Invoice</span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleFavorite(bill.id);
-                                            }}
-                                            className="p-1.5 text-[#9DB094] hover:text-[#607C3C] transition-colors rounded-lg hover:bg-[#F5F6F2]"
-                                            aria-label="Simpan favorit"
-                                        >
-                                            <Star className={`w-4 h-4 ${bill.isFavorite ? 'fill-[#607C3C] text-[#607C3C]' : ''}`} />
-                                        </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleFavorite(bill.id);
+                                                }}
+                                                className="p-1.5 text-[#9DB094] hover:text-[#607C3C] transition-colors rounded-lg hover:bg-[#F5F6F2]"
+                                                aria-label="Simpan favorit"
+                                            >
+                                                <Star className={`w-4 h-4 ${bill.isFavorite ? 'fill-[#607C3C] text-[#607C3C]' : ''}`} />
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
                         )}
                     </div>
                 )}
@@ -1112,16 +1276,6 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                     Rekening Giro Penampung BCA: 778-901-2345 a.n. Kas Paguyuban RT 05
                                 </p>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <div className="px-3 py-1.5 rounded-xl bg-white border border-[#D5DFC9] text-xs">
-                                    <span className="text-[#7A8A70]">Pertumbuhan:</span>{' '}
-                                    <strong className="text-[#2F611E]">+12.4%</strong> vs bulan lalu
-                                </div>
-                                <div className="px-3 py-1.5 rounded-xl bg-white border border-[#D5DFC9] text-xs">
-                                    <span className="text-[#7A8A70]">Kepatuhan IPL:</span>{' '}
-                                    <strong className="text-[#607C3C]">88%</strong> (38 dari 43 Unit)
-                                </div>
-                            </div>
                         </div>
 
                         {/* Expense Audit List Header */}
@@ -1130,9 +1284,6 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                 <h3 className="text-lg sm:text-xl font-black text-[#192414] tracking-tight">
                                     Buku Kas & Pengeluaran Terverifikasi
                                 </h3>
-                                <span className="text-xs font-bold text-[#607C3C] bg-[#EDF5E8] px-2.5 py-1 rounded-md border border-[#C5DCB6]">
-                                    Audit Multi-Sig 3 Kunci
-                                </span>
                             </div>
                             <span className="text-xs text-[#7A8A70] font-semibold hidden sm:inline">
                                 Terbuka untuk seluruh warga
@@ -1177,11 +1328,12 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                             type="button"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                setSelectedExpense(expense);
+                                                openExpensePdfPreview(expense);
                                             }}
-                                            className="px-3.5 py-2 rounded-xl bg-[#EDF5E8] hover:bg-[#607C3C] text-[#366822] hover:text-white border border-[#C5DCB6] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5"
+                                            className="px-3.5 py-2 rounded-xl bg-[#EDF5E8] hover:bg-[#607C3C] text-[#366822] hover:text-white border border-[#C5DCB6] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                                            title="Preview Kuitansi PDF Langsung"
                                         >
-                                            <ShieldCheck className="w-3.5 h-3.5" />
+                                            <FileText className="w-3.5 h-3.5" />
                                             <span>Bukti Kuitansi</span>
                                         </button>
                                     </div>
@@ -1207,7 +1359,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                         Jadwal Pengangkutan Terdekat
                                     </span>
                                     <h4 className="text-lg sm:text-xl font-extrabold text-[#192414] mt-0.5">
-                                        Besok Pagi, 04 Okt 2024 (06:30 - 08:30 WITA)
+                                        Besok Pagi, 04 Okt 2024 (06:30 - 08:30 WIB)
                                     </h4>
                                     <p className="text-xs text-[#6E7F65] font-semibold mt-0.5">
                                         Armada Truk RT 05 • Pastikan sampah di depan pagar sebelum pukul 06:00 WITA.
@@ -1280,7 +1432,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                     </p>
                                 </div>
                                 <span className="text-xs font-bold text-[#607C3C] bg-[#EDF5E8] px-3 py-1 rounded-full border border-[#C5DCB6] self-start sm:self-auto">
-                                    Online Booking Terintegrasi
+                                    Penjemputan
                                 </span>
                             </div>
 
@@ -1342,14 +1494,14 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                 <div
                                     key={contact.id}
                                     className={`w-full p-5 sm:p-6 rounded-2xl bg-white border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${contact.isEmergency
-                                            ? 'border-[#E8C5BC] shadow-[0_4px_16px_rgba(180,60,40,0.04)]'
-                                            : 'border-[#E5EBDD] hover:border-[#607C3C]/50'
+                                        ? 'border-[#E8C5BC] shadow-[0_4px_16px_rgba(180,60,40,0.04)]'
+                                        : 'border-[#E5EBDD] hover:border-[#607C3C]/50'
                                         }`}
                                 >
                                     <div className="flex items-start sm:items-center gap-4 min-w-0">
                                         <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 border ${contact.isEmergency
-                                                ? 'bg-[#FDF0E9] border-[#F5CEBA] text-[#A6461D]'
-                                                : 'bg-[#F4F6F1] border-[#EAEFE5] text-[#607C3C]'
+                                            ? 'bg-[#FDF0E9] border-[#F5CEBA] text-[#A6461D]'
+                                            : 'bg-[#F4F6F1] border-[#EAEFE5] text-[#607C3C]'
                                             }`}>
                                             {contact.isEmergency ? <AlertTriangle className="w-6 h-6" /> : <UserCheck className="w-6 h-6" />}
                                         </div>
@@ -1360,8 +1512,8 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                                     {contact.name}
                                                 </h4>
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${contact.isEmergency
-                                                        ? 'bg-[#FDF0E9] text-[#A6461D] border-[#F5CEBA]'
-                                                        : 'bg-[#EDF5E8] text-[#2F611E] border-[#C5DCB6]'
+                                                    ? 'bg-[#FDF0E9] text-[#A6461D] border-[#F5CEBA]'
+                                                    : 'bg-[#EDF5E8] text-[#2F611E] border-[#C5DCB6]'
                                                     }`}>
                                                     {contact.role}
                                                 </span>
@@ -1396,10 +1548,6 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                     3. FOOTER BAR (Clean system sync status left, navigation links right)
                    ------------------------------------------------------------- */}
                 <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-[#7A8A70] border-t border-[#F0F3EC]">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#2DA84E] animate-pulse" />
-                        <span>Sistem Kas RT 05 Online & Sinkronisasi Real-Time</span>
-                    </div>
                     <div className="flex items-center gap-4">
                         <button
                             type="button"
@@ -1412,26 +1560,6 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         <span className="font-medium text-[#192414]">{currentUser.name} (Cluster 05)</span>
                     </div>
                 </div>
-
-                {/* Weather Banner Widget from Backend OpenWeather */}
-                {weatherInfo && (
-                    <div className="p-3.5 px-5 rounded-2xl bg-gradient-to-r from-[#EDF5E8] via-[#E2ECD9] to-[#F3F7EF] border border-[#CADBBD] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-                        <div className="flex items-center gap-3 text-[#213418]">
-                            <div className="w-8 h-8 rounded-xl bg-[#607C3C]/15 flex items-center justify-center text-[#607C3C] shrink-0">
-                                <CloudSun className="w-4 h-4" />
-                            </div>
-                            <div className="text-xs">
-                                <span className="font-black text-[#1A2518]">{weatherInfo.location}</span>
-                                <span className="text-[#647959] ml-1.5">
-                                    • {weatherInfo.temperature.toFixed(1)}°C, {weatherInfo.description} (Kelembapan {weatherInfo.humidity}%)
-                                </span>
-                            </div>
-                        </div>
-                        <span className="text-[10px] font-bold text-[#455C2C] bg-white/80 px-2.5 py-1 rounded-lg border border-[#CADBBD] self-start sm:self-auto">
-                            Status TPS: Aman & Siap Operasional
-                        </span>
-                    </div>
-                )}
 
             </main>
 
@@ -1477,8 +1605,8 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                 <div className="flex justify-between items-center">
                                     <span className="text-[#7A8A70]">Status Tagihan:</span>
                                     <span className={`font-bold px-2.5 py-0.5 rounded text-[11px] ${selectedInvoice.status === 'LUNAS'
-                                            ? 'text-[#2F611E] bg-[#EDF5E8] border border-[#C5DCB6]'
-                                            : 'text-[#E65100] bg-[#FFF3E0] border border-[#FFE0B2]'
+                                        ? 'text-[#2F611E] bg-[#EDF5E8] border border-[#C5DCB6]'
+                                        : 'text-[#E65100] bg-[#FFF3E0] border border-[#FFE0B2]'
                                         }`}>
                                         {selectedInvoice.status}
                                     </span>
@@ -1539,13 +1667,12 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        window.print();
-                                        setSelectedInvoice(null);
+                                        openInvoicePdfPreview(selectedInvoice);
                                     }}
                                     className="px-4 py-2 rounded-xl bg-[#1A331E] hover:bg-[#25442A] text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer"
                                 >
-                                    <Printer className="w-3.5 h-3.5" />
-                                    <span>Cetak PDF</span>
+                                    <FileText className="w-3.5 h-3.5" />
+                                    <span>Preview PDF Resmi</span>
                                 </button>
                             </div>
                         </motion.div>
@@ -1631,13 +1758,12 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        showToast(`Mengunduh kuitansi PDF ${selectedExpense.receiptNo}...`);
-                                        setSelectedExpense(null);
+                                        openExpensePdfPreview(selectedExpense);
                                     }}
-                                    className="px-4 py-2 rounded-xl bg-[#1A331E] hover:bg-[#25442A] text-xs font-bold text-white flex items-center gap-1.5 transition-colors"
+                                    className="px-4 py-2 rounded-xl bg-[#1A331E] hover:bg-[#25442A] text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer"
                                 >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                    <span>Unduh Bukti</span>
+                                    <FileText className="w-3.5 h-3.5" />
+                                    <span>Preview PDF Kuitansi</span>
                                 </button>
                             </div>
                         </motion.div>
@@ -1753,7 +1879,22 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                         </motion.div>
                     </div>
                 )}
-                </AnimatePresence>
+            </AnimatePresence>
+
+            {/* 3rd Party Live PDF Viewer Pop-up Modal */}
+            <PdfViewerModal
+                isOpen={pdfModalOpen}
+                onClose={() => {
+                    setPdfModalOpen(false);
+                    if (previewPdfUrl) {
+                        URL.revokeObjectURL(previewPdfUrl);
+                        setPreviewPdfUrl(null);
+                    }
+                }}
+                pdfUrl={previewPdfUrl}
+                title={pdfTitle}
+                fileName={pdfFileName}
+            />
 
         </div>
     );

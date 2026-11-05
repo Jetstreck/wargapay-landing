@@ -58,7 +58,10 @@ export interface WeatherData {
     feels_like: number;
     humidity: number;
     description: string;
+    condition?: string;
+    icon?: string;
     wind_speed: number;
+    recommendation?: string;
 }
 
 export interface ExpenseItem {
@@ -286,6 +289,14 @@ export const apiGetNotifications = async (): Promise<{ data: NotificationItem[];
         return { data: res.data || [], unread: res.unread || 0 };
     } catch {
         return { data: [], unread: 0 };
+    }
+};
+
+export const apiMarkNotificationsRead = async (): Promise<void> => {
+    try {
+        await request('/notifications/read', { method: 'PUT' });
+    } catch {
+        // silent fail
     }
 };
 

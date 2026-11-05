@@ -25,7 +25,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome, onLoginSuccess }) =
     const [regName, setRegName] = useState('');
     const [regEmail, setRegEmail] = useState('');
     const [regPassword, setRegPassword] = useState('');
-    const [regRole, setRegRole] = useState<'user' | 'admin'>('user');
 
     // UI Feedback
     const [loading, setLoading] = useState(false);
@@ -61,7 +60,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome, onLoginSuccess }) =
         setLoading(true);
 
         try {
-            await apiRegister(regName.trim(), regEmail.trim(), regPassword, regRole);
+            await apiRegister(regName.trim(), regEmail.trim(), regPassword, 'user');
             setLoading(false);
             setSuccessMessage('Registrasi berhasil! Akun Anda siap digunakan. Silakan masuk.');
             // Pre-fill login credentials and switch to login tab
@@ -71,18 +70,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome, onLoginSuccess }) =
         } catch (err: any) {
             setLoading(false);
             setErrorMessage(err.message || 'Gagal registrasi. Pastikan email belum pernah terdaftar.');
-        }
-    };
-
-    const handleQuickAutofill = (type: 'resident' | 'admin') => {
-        setAuthMode('login');
-        setErrorMessage(null);
-        if (type === 'resident') {
-            setIdentifier('budi@wargapay.id');
-            setPassword('warga123');
-        } else {
-            setIdentifier('admin@wargapay.id');
-            setPassword('admin123');
         }
     };
 
@@ -212,33 +199,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome, onLoginSuccess }) =
 
                     {authMode === 'login' ? (
                         /* ================= LOGIN FORM ================= */
-                        <>
-                            {/* Quick Autofill Buttons for Testing */}
-                            <div className="mb-5 p-3 rounded-2xl bg-[#F6F8F3] border border-[#DCE4D3] text-xs">
-                                <span className="text-[11px] font-bold text-[#7A8A70] block mb-1.5 uppercase tracking-wider">
-                                    Pilih Akun Demo (Uji Coba Cepat):
-                                </span>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleQuickAutofill('resident')}
-                                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#EAF1E4] border border-[#D5DFC9] text-[#192414] hover:text-[#607C3C] text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
-                                    >
-                                        <span className="w-2 h-2 rounded-full bg-[#607C3C]" />
-                                        <span>Akun Warga (Bpk. Budi)</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleQuickAutofill('admin')}
-                                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#EAF1E4] border border-[#D5DFC9] text-[#192414] hover:text-[#1A331E] text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
-                                    >
-                                        <span className="w-2 h-2 rounded-full bg-[#1A331E]" />
-                                        <span>Akun Pengurus RT (Admin)</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <form onSubmit={handleLoginSubmit} className="space-y-4">
+                        <form onSubmit={handleLoginSubmit} className="space-y-4">
                                 <div>
                                     <label htmlFor="identifier" className="block text-xs font-bold text-[#273623] mb-1.5">
                                         Email Akun
@@ -314,7 +275,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome, onLoginSuccess }) =
                                     )}
                                 </button>
                             </form>
-                        </>
                     ) : (
                         /* ================= REGISTER FORM ================= */
                         <form onSubmit={handleRegisterSubmit} className="space-y-4">
@@ -376,32 +336,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToHome, onLoginSuccess }) =
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-[#273623] mb-1.5">Daftar Sebagai</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setRegRole('user')}
-                                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                                            regRole === 'user'
-                                                ? 'bg-[#607C3C] text-white border-[#607C3C]'
-                                                : 'bg-[#F9FAF8] text-[#455A2B] border-[#DCE4D3]'
-                                        }`}
-                                    >
-                                        Warga Klaster
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setRegRole('admin')}
-                                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                                            regRole === 'admin'
-                                                ? 'bg-[#1A331E] text-white border-[#1A331E]'
-                                                : 'bg-[#F9FAF8] text-[#455A2B] border-[#DCE4D3]'
-                                        }`}
-                                    >
-                                        Pengurus RT (Admin)
-                                    </button>
-                                </div>
+                            <div className="p-3 bg-[#F4F7F1] rounded-xl border border-[#DDE7D6] flex items-center gap-2.5">
+                                <CheckCircle className="w-4 h-4 text-[#607C3C] shrink-0" />
+                                <p className="text-[11px] text-[#475C3B] leading-relaxed">
+                                    Pendaftaran akun baru otomatis terdaftar sebagai <strong>Warga Klaster</strong>. Akses Pengurus RT/Admin hanya dapat diberikan oleh Pengurus RT yang berwenang.
+                                </p>
                             </div>
 
                             <button
