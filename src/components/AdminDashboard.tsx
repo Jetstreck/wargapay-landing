@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
@@ -25,6 +25,12 @@ import {
     Cloud
 } from 'lucide-react';
 import logoBrand from '../assets/logo-brand.jpg';
+import {
+    getStoredUser,
+    clearSession,
+    apiGetTransactionReport,
+    apiGetDues
+} from '../services/api';
 
 interface AdminDashboardProps {
     onLogout?: () => void;
@@ -62,6 +68,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     // Toast feedback
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+    // Current Admin User & Backend Reports
+    const [currentUser] = useState(() => getStoredUser() || { name: 'Pengurus RT 05', email: 'admin@wargapay.id', role: 'admin' });
+    const [reportData, setReportData] = useState<any>(null);
+
+    const showToast = (msg: string) => {
+        setToastMessage(msg);
+        setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    // Load backend data for Admin
+    useEffect(() => {
+        apiGetTransactionReport().then((rep) => {
+            if (rep) setReportData(rep);
+        }).catch(() => {});
+
+        // Fetch Dues for Verification tab
+        apiGetDues().then((dues) => {
+            if (dues && dues.length > 0) {
+                const mapped: VerificationItem[] = dues.map((d: any, idx: number) => ({
+                    id: `VER-${String(idx + 1).padStart(3, '0')}`,
+                    unit: `Cluster Blok B No. ${d.user_id + 10}`,
+                    resident: d.user_id === 1 ? 'Pengurus RT' : d.user_id === 2 ? 'Bpk. Budi' : d.user_id === 3 ? 'Ibu Siti' : 'Bpk. Joko',
+                    amount: `Rp ${d.total.toLocaleString('id-ID')}`,
+                    method: d.status === 'paid' ? 'Midtrans VA / QRIS' : 'Menunggu Bayar',
+                    status: d.status === 'paid' ? 'AUTO VERIFIED' : 'BUTUH APPROVAL',
+                    badgeClass: d.status === 'paid' ? 'bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]' : 'bg-[#FFF8E7] text-[#9A6209] border border-[#F4DCAC]',
+                    date: d.period || '2026-11',
+                    receiptRef: `INV-${d.id}-${d.period}`,
+                }));
+                setVerificationList(mapped);
+            }
+        }).catch(() => {});
+    }, []);
+
     // Modals
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const [showBillModal, setShowBillModal] = useState(false);
@@ -82,11 +122,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [newHead, setNewHead] = useState('');
     const [newPhone, setNewPhone] = useState('');
     const [newMembers, setNewMembers] = useState('3');
-
-    const showToast = (msg: string) => {
-        setToastMessage(msg);
-        setTimeout(() => setToastMessage(null), 3000);
-    };
 
     // ==========================================
     // DATA 1: Verifikasi IPL Warga
@@ -582,11 +617,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-full bg-[#1A331E] text-white text-xs font-black flex items-center justify-center border border-[#3E5C2D]">
-                                PB
+                                AD
                             </div>
                             <div className="min-w-0">
-                                <p className="text-xs font-bold text-[#192414] truncate">Pak Bambang</p>
-                                <p className="text-[10px] text-[#7A8A70] truncate">Bendahara RT 05</p>
+                                <p className="text-xs font-bold text-[#192414] truncate">{currentUser.name}</p>
+                                <p className="text-[10px] text-[#7A8A70] truncate">{currentUser.email}</p>
                             </div>
                         </div>
 
@@ -605,7 +640,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             {onLogout && (
                                 <button
                                     type="button"
-                                    onClick={onLogout}
+                                    onClick={() => {
+                                        clearSession();
+                                        onLogout();
+                                    }}
                                     className="p-1.5 text-[#7A8A70] hover:text-[#B33939] rounded-lg hover:bg-[#F4F6F1] transition-colors cursor-pointer"
                                     title="Keluar"
                                 >
@@ -779,14 +817,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="p-4 rounded-xl bg-[#F6F8F3] border border-[#D8E2D0] flex flex-col justify-between">
                                     <span className="text-[11px] font-bold text-[#7A8A70] uppercase">
-                                        1. Total Kas RT Sekarang
+                                        1. Total Pemasukan Lunas
                                     </span>
                                     <div className="text-xl sm:text-2xl font-black text-[#192414] mt-1">
-                                        Rp 42.500.000
+                                        Rp {reportData?.total_revenue ? reportData.total_revenue.toLocaleString('id-ID') : '42.500.000'}
                                     </div>
                                     <span className="text-[11px] font-semibold text-[#2F611E] mt-1 flex items-center gap-1">
                                         <CheckCircle2 className="w-3.5 h-3.5" />
-                                        Status: Sehat / Verified GDrive
+                                        Status: Terhubung Midtrans Sandbox
                                     </span>
                                 </div>
 

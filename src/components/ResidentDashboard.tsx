@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search,
@@ -21,9 +21,23 @@ import {
     Recycle,
     AlertTriangle,
     Clock,
-    UserCheck
+    UserCheck,
+    CloudSun,
+    QrCode,
+    Loader2
 } from 'lucide-react';
 import logoBrand from '../assets/logo-brand.jpg';
+import {
+    getStoredUser,
+    clearSession,
+    apiGetDues,
+    apiGetWeather,
+    apiCreateTransaction,
+    apiSimulatePayment,
+    openMidtransSnap,
+    DuesItem,
+    WeatherData
+} from '../services/api';
 
 interface ResidentDashboardProps {
     onLogout?: () => void;
@@ -47,10 +61,103 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
     const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [isPaying, setIsPaying] = useState(false);
+
+    // Current User & Weather state
+    const [currentUser] = useState(() => getStoredUser() || { name: 'Bpk. Budi Santoso', email: 'budi@wargapay.id', role: 'user' });
+    const [weatherInfo, setWeatherInfo] = useState<WeatherData | null>(null);
 
     const showToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    // Load backend data
+    const fetchDuesFromBackend = async () => {
+        try {
+            const data = await apiGetDues();
+            if (data && data.length > 0) {
+                const formatted = data.map((d: DuesItem) => ({
+                    id: `IPL-${d.period}`,
+                    rawId: d.id,
+                    title: `IPL Periode ${d.period}`,
+                    tag: d.status === 'paid' ? 'LUNAS' : 'Belum Bayar',
+                    status: d.status === 'paid' ? 'LUNAS' : 'BELUM LUNAS',
+                    rawStatus: d.status,
+                    amount: `Rp ${d.total.toLocaleString('id-ID')}`,
+                    badgeBg: d.status === 'paid'
+                        ? 'bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]'
+                        : 'bg-[#FFF3E0] text-[#E65100] border border-[#FFE0B2]',
+                    details: `Rincian: Keamanan Rp ${(d.security_fee / 1000).toFixed(0)}k, Kebersihan Rp ${(d.waste_fee / 1000).toFixed(0)}k, Kas RT Rp ${(d.rt_fund / 1000).toFixed(0)}k`,
+                    isFavorite: false,
+                    isCurrent: d.status === 'unpaid',
+                }));
+                setBillItems(formatted);
+            }
+        } catch (e) {
+            console.log('Menggunakan data lokal iuran:', e);
+        }
+    };
+
+    useEffect(() => {
+        fetchDuesFromBackend();
+
+        // Load Weather
+        apiGetWeather(-6.2088, 106.8456).then((w) => {
+            if (w) setWeatherInfo(w);
+        });
+    }, []);
+
+    // Payment Handlers (Midtrans Snap with QRIS)
+    const handlePayMidtrans = async (bill: any) => {
+        try {
+            setIsPaying(true);
+            showToast('Menghubungkan ke Midtrans Snap...');
+            const tx = await apiCreateTransaction({
+                type: 'dues',
+                dues_id: bill.rawId || 1,
+            });
+
+            openMidtransSnap(tx.snap_token || '', tx.snap_redirect_url, {
+                onSuccess: () => {
+                    showToast('Pembayaran Midtrans Berhasil!');
+                    fetchDuesFromBackend();
+                    setSelectedInvoice(null);
+                },
+                onPending: () => {
+                    showToast('Menunggu pembayaran QRIS / Bank Transfer.');
+                    fetchDuesFromBackend();
+                },
+                onError: () => {
+                    showToast('Pembayaran gagal atau dibatalkan.');
+                },
+                onClose: () => {
+                    showToast('Jendela pembayaran ditutup.');
+                },
+            });
+        } catch (err: any) {
+            showToast(err.message || 'Gagal memulai transaksi Midtrans.');
+        } finally {
+            setIsPaying(false);
+        }
+    };
+
+    const handleSimulateInstantPay = async (bill: any) => {
+        try {
+            setIsPaying(true);
+            const tx = await apiCreateTransaction({
+                type: 'dues',
+                dues_id: bill.rawId || 1,
+            });
+            await apiSimulatePayment(tx.id);
+            showToast('Simulasi Berhasil! Status tagihan lunas.');
+            await fetchDuesFromBackend();
+            setSelectedInvoice(null);
+        } catch (err: any) {
+            showToast(err.message || 'Gagal simulasi pembayaran.');
+        } finally {
+            setIsPaying(false);
+        }
     };
 
     // ==========================================
@@ -413,7 +520,10 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                     {onLogout && (
                         <button
                             type="button"
-                            onClick={onLogout}
+                            onClick={() => {
+                                clearSession();
+                                onLogout();
+                            }}
                             className="text-[#A2B199] hover:text-[#B33939] transition-colors p-1 cursor-pointer"
                             title="Keluar dari Dashboard"
                         >
@@ -570,6 +680,26 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                     </div>
                 </div>
 
+                {/* Weather Banner Widget from Backend OpenWeather */}
+                {weatherInfo && (
+                    <div className="p-3.5 px-5 rounded-2xl bg-gradient-to-r from-[#EDF5E8] via-[#E2ECD9] to-[#F3F7EF] border border-[#CADBBD] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                        <div className="flex items-center gap-3 text-[#213418]">
+                            <div className="w-8 h-8 rounded-xl bg-[#607C3C]/15 flex items-center justify-center text-[#607C3C] shrink-0">
+                                <CloudSun className="w-4 h-4" />
+                            </div>
+                            <div className="text-xs">
+                                <span className="font-black text-[#1A2518]">{weatherInfo.location}</span>
+                                <span className="text-[#647959] ml-1.5">
+                                    • {weatherInfo.temperature.toFixed(1)}°C, {weatherInfo.description} (Kelembapan {weatherInfo.humidity}%)
+                                </span>
+                            </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#455C2C] bg-white/80 px-2.5 py-1 rounded-lg border border-[#CADBBD] self-start sm:self-auto">
+                            Status TPS: Aman & Siap Operasional
+                        </span>
+                    </div>
+                )}
+
                 {/* -------------------------------------------------------------
                     PAGE 1: IURAN & TAGIHAN WARGA
                    ------------------------------------------------------------- */}
@@ -635,6 +765,22 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                                 {bill.amount}
                                             </div>
                                         </div>
+
+                                        {bill.status !== 'LUNAS' && (
+                                            <button
+                                                type="button"
+                                                disabled={isPaying}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handlePayMidtrans(bill);
+                                                }}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                                title="Bayar langsung via Midtrans QRIS / Virtual Account"
+                                            >
+                                                <QrCode className="w-3.5 h-3.5" />
+                                                <span>Bayar (QR)</span>
+                                            </button>
+                                        )}
 
                                         <button
                                             type="button"
@@ -942,6 +1088,26 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                     </div>
                 </div>
 
+                {/* Weather Banner Widget from Backend OpenWeather */}
+                {weatherInfo && (
+                    <div className="p-3.5 px-5 rounded-2xl bg-gradient-to-r from-[#EDF5E8] via-[#E2ECD9] to-[#F3F7EF] border border-[#CADBBD] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                        <div className="flex items-center gap-3 text-[#213418]">
+                            <div className="w-8 h-8 rounded-xl bg-[#607C3C]/15 flex items-center justify-center text-[#607C3C] shrink-0">
+                                <CloudSun className="w-4 h-4" />
+                            </div>
+                            <div className="text-xs">
+                                <span className="font-black text-[#1A2518]">{weatherInfo.location}</span>
+                                <span className="text-[#647959] ml-1.5">
+                                    • {weatherInfo.temperature.toFixed(1)}°C, {weatherInfo.description} (Kelembapan {weatherInfo.humidity}%)
+                                </span>
+                            </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#455C2C] bg-white/80 px-2.5 py-1 rounded-lg border border-[#CADBBD] self-start sm:self-auto">
+                            Status TPS: Aman & Siap Operasional
+                        </span>
+                    </div>
+                )}
+
             </main>
 
             {/* =========================================================================
@@ -981,31 +1147,68 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                             <div className="p-4 rounded-2xl bg-[#F7F8F4] border border-[#E3EBD9] space-y-2.5 text-xs">
                                 <div className="flex justify-between">
                                     <span className="text-[#7A8A70]">Warga / Unit:</span>
-                                    <span className="font-bold text-[#192414]">Bpk. Budi (Blok B-12)</span>
+                                    <span className="font-bold text-[#192414]">{currentUser.name} (Cluster 05)</span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between items-center">
                                     <span className="text-[#7A8A70]">Status Tagihan:</span>
-                                    <span className="font-bold text-[#2F611E] bg-[#EDF5E8] px-2 py-0.5 rounded text-[11px] border border-[#C5DCB6]">
-                                        LUNAS (Auto Debit)
+                                    <span className={`font-bold px-2.5 py-0.5 rounded text-[11px] ${
+                                        selectedInvoice.status === 'LUNAS'
+                                            ? 'text-[#2F611E] bg-[#EDF5E8] border border-[#C5DCB6]'
+                                            : 'text-[#E65100] bg-[#FFF3E0] border border-[#FFE0B2]'
+                                    }`}>
+                                        {selectedInvoice.status}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[#7A8A70]">Rincian Alokasi:</span>
                                     <span className="font-medium text-[#192414] text-right text-[11px]">
-                                        Keamanan Rp200k, Kebersihan Rp150k, Kas RT Rp100k
+                                        {selectedInvoice.details}
                                     </span>
                                 </div>
                                 <div className="pt-2 border-t border-[#E3EBD9] flex justify-between items-center text-sm font-black text-[#192414]">
                                     <span>Total Nominal:</span>
-                                    <span className="text-[#607C3C]">{selectedInvoice.amount}</span>
+                                    <span className="text-[#607C3C] text-base">{selectedInvoice.amount}</span>
                                 </div>
                             </div>
+
+                            {/* Payment Actions if UNPAID */}
+                            {selectedInvoice.status !== 'LUNAS' && selectedInvoice.rawStatus !== 'paid' ? (
+                                <div className="mt-4 space-y-2">
+                                    <button
+                                        type="button"
+                                        disabled={isPaying}
+                                        onClick={() => handlePayMidtrans(selectedInvoice)}
+                                        className="w-full py-3 px-4 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] active:scale-[0.99] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                                    >
+                                        {isPaying ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                <span>Membuka Midtrans...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <QrCode className="w-4 h-4" />
+                                                <span>Bayar Sekarang (Midtrans QRIS / Transfer)</span>
+                                            </>
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={isPaying}
+                                        onClick={() => handleSimulateInstantPay(selectedInvoice)}
+                                        className="w-full py-2.5 px-3 rounded-xl bg-[#F0F2EB] hover:bg-[#E2E8D8] text-[#3B4F25] font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                                    >
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-[#607C3C]" />
+                                        <span>Simulasi Bayar Instan (Sandbox Demo)</span>
+                                    </button>
+                                </div>
+                            ) : null}
 
                             <div className="mt-5 flex items-center justify-end gap-2.5">
                                 <button
                                     type="button"
                                     onClick={() => setSelectedInvoice(null)}
-                                    className="px-4 py-2 rounded-xl text-xs font-bold text-[#7A8A70] hover:bg-[#F0F2EB] transition-colors"
+                                    className="px-4 py-2 rounded-xl text-xs font-bold text-[#7A8A70] hover:bg-[#F0F2EB] transition-colors cursor-pointer"
                                 >
                                     Tutup
                                 </button>
@@ -1015,7 +1218,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                         window.print();
                                         setSelectedInvoice(null);
                                     }}
-                                    className="px-4 py-2 rounded-xl bg-[#1A331E] hover:bg-[#25442A] text-xs font-bold text-white flex items-center gap-1.5 transition-colors"
+                                    className="px-4 py-2 rounded-xl bg-[#1A331E] hover:bg-[#25442A] text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer"
                                 >
                                     <Printer className="w-3.5 h-3.5" />
                                     <span>Cetak PDF</span>

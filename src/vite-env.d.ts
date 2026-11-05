@@ -19,3 +19,14 @@ declare module '*.glb?url' {
     const src: string;
     export default src;
 }
+
+interface Window {
+    snap?: {
+        pay: (token: string, options?: {
+            onSuccess?: (result: any) => void;
+            onPending?: (result: any) => void;
+            onError?: (result: any) => void;
+            onClose?: () => void;
+        }) => void;
+    };
+}
