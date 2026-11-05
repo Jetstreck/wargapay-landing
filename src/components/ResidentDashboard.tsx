@@ -24,6 +24,7 @@ import {
     UserCheck,
     CloudSun,
     QrCode,
+    Calendar,
     Loader2
 } from 'lucide-react';
 import logoBrand from '../assets/logo-brand.jpg';
@@ -31,11 +32,15 @@ import {
     getStoredUser,
     clearSession,
     apiGetDues,
+    apiGetExpenses,
+    apiGetServices,
     apiGetWeather,
     apiCreateTransaction,
     apiSimulatePayment,
     openMidtransSnap,
     DuesItem,
+    ExpenseItem,
+    WasteServiceItem,
     WeatherData,
     User
 } from '../services/api';
@@ -120,8 +125,44 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
         }
     };
 
+    const fetchExpensesFromBackend = async () => {
+        try {
+            const data = await apiGetExpenses();
+            if (data && data.length > 0) {
+                const formatted = data.map((exp: ExpenseItem) => ({
+                    id: `EXP-${exp.id}`,
+                    rawId: exp.id,
+                    title: exp.title,
+                    vendor: exp.vendor,
+                    category: exp.category,
+                    date: exp.date,
+                    amount: `Rp ${exp.amount.toLocaleString('id-ID')}`,
+                    receiptNo: exp.receipt_ref || `RCP-${exp.id}`,
+                    details: exp.description || 'Pengeluaran kas tercatat di buku kas bersama RT 05',
+                    signedBy: [exp.approved_by || 'Bpk. Hendra (Ketua RT)', 'Ibu Dewi (Bendahara)'],
+                }));
+                setExpenseList(formatted);
+            }
+        } catch (e) {
+            console.log('Menggunakan data lokal pengeluaran:', e);
+        }
+    };
+
+    const fetchServicesFromBackend = async () => {
+        try {
+            const data = await apiGetServices();
+            if (data && data.length > 0) {
+                setWasteServices(data);
+            }
+        } catch (e) {
+            console.log('Menggunakan data lokal layanan sampah:', e);
+        }
+    };
+
     useEffect(() => {
         fetchDuesFromBackend();
+        fetchExpensesFromBackend();
+        fetchServicesFromBackend();
 
         // Load Weather
         apiGetWeather(-6.2088, 106.8456).then((w) => {
@@ -223,7 +264,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     // ==========================================
     // DATA 2: KAS RT & PENGELUARAN (MUTASI)
     // ==========================================
-    const expenseItems = [
+    const [expenseList, setExpenseList] = useState([
         {
             id: 'EXP-01',
             title: 'Gaji 4 Petugas Satpam & Komandan Regu',
@@ -279,7 +320,61 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
             details: 'Pengadaan tabung APAR powder 6kg untuk kesiapsiagaan kebakaran pos induk',
             signedBy: ['Bpk. Hendra (Ketua RT)', 'Ibu Dewi (Bendahara)']
         }
-    ];
+    ]);
+
+    // ==========================================
+    // DATA LAYANAN SAMPAH & ORDERING
+    // ==========================================
+    const [wasteServices, setWasteServices] = useState<WasteServiceItem[]>([]);
+    const [selectedServiceForOrder, setSelectedServiceForOrder] = useState<WasteServiceItem | null>(null);
+    const [pickupAddress, setPickupAddress] = useState('Cluster 05 Blok B No. 12');
+    const [pickupDate, setPickupDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        return d.toISOString().split('T')[0];
+    });
+    const [orderNotes, setOrderNotes] = useState('');
+    const [isOrdering, setIsOrdering] = useState(false);
+
+    const handleOrderWasteService = async () => {
+        if (!selectedServiceForOrder) return;
+        setIsOrdering(true);
+        try {
+            const tx = await apiCreateTransaction({
+                type: 'waste_service',
+                waste_service_id: selectedServiceForOrder.id,
+                pickup_address: pickupAddress,
+                pickup_date: pickupDate,
+                notes: orderNotes,
+            });
+
+            setIsOrdering(false);
+            const serviceName = selectedServiceForOrder.name;
+            setSelectedServiceForOrder(null);
+
+            if (tx.snap_token) {
+                openMidtransSnap(tx.snap_token, tx.snap_redirect_url, {
+                    onSuccess: () => {
+                        showToast(`Pembayaran pesanan ${serviceName} Berhasil!`);
+                    },
+                    onPending: () => {
+                        showToast('Menunggu pembayaran Midtrans');
+                    },
+                    onError: () => {
+                        showToast('Pembayaran dibatalkan');
+                    },
+                    onClose: () => {
+                        showToast('Pesanan tersimpan dalam status menunggu pembayaran');
+                    },
+                });
+            } else {
+                showToast(`Pesanan ${serviceName} berhasil dibuat!`);
+            }
+        } catch (err: any) {
+            setIsOrdering(false);
+            showToast(err.message || 'Gagal membuat pesanan layanan sampah');
+        }
+    };
 
     // ==========================================
     // DATA 3: JADWAL & SANITASI SAMPAH
@@ -381,7 +476,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     );
 
     // Filter expenses
-    const filteredExpenses = expenseItems.filter(e =>
+    const filteredExpenses = expenseList.filter(e =>
         e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         e.vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
         e.category.toLowerCase().includes(searchQuery.toLowerCase())
@@ -1034,6 +1129,54 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                 </div>
                             ))}
                         </div>
+
+                        {/* Layanan Pemesanan Penjemputan Sampah Khusus (Backend Waste Services) */}
+                        <div className="pt-6 border-t border-[#F0F3EC]">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 mb-4 gap-2">
+                                <div>
+                                    <h3 className="text-lg sm:text-xl font-black text-[#192414] tracking-tight">
+                                        Pesan Layanan Sampah & Penjemputan Khusus
+                                    </h3>
+                                    <p className="text-xs text-[#7A8A70]">
+                                        Layanan penjemputan terjadwal langsung ke depan unit rumah dengan pembayaran Midtrans QRIS
+                                    </p>
+                                </div>
+                                <span className="text-xs font-bold text-[#607C3C] bg-[#EDF5E8] px-3 py-1 rounded-full border border-[#C5DCB6] self-start sm:self-auto">
+                                    Online Booking Terintegrasi
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {wasteServices.map((service) => (
+                                    <div
+                                        key={service.id}
+                                        className="p-5 rounded-2xl bg-white border border-[#E5EBDD] hover:border-[#607C3C] transition-all flex flex-col justify-between gap-3 shadow-2xs group"
+                                    >
+                                        <div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <h4 className="font-extrabold text-sm sm:text-base text-[#192414] group-hover:text-[#607C3C] transition-colors">
+                                                    {service.name}
+                                                </h4>
+                                                <span className="text-sm font-black text-[#607C3C] shrink-0">
+                                                    Rp {service.price.toLocaleString('id-ID')}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-[#6E7F65] font-medium mt-1 leading-relaxed">
+                                                {service.description}
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedServiceForOrder(service)}
+                                            className="w-full py-2.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs mt-2"
+                                        >
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            <span>Pesan Penjemputan (QRIS / Midtrans)</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -1357,6 +1500,116 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
                                 >
                                     <ExternalLink className="w-3.5 h-3.5" />
                                     <span>Unduh Bukti</span>
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* MODAL 3: PEMESANAN LAYANAN SAMPAH (MIDTRANS SNAP) */}
+                {selectedServiceForOrder && (
+                    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.96 }}
+                            className="bg-white rounded-3xl max-w-md w-full border border-[#D2DBC5] shadow-2xl p-6 sm:p-7 relative"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setSelectedServiceForOrder(null)}
+                                className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-[#F0F2EB] text-[#7A8A70] transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+
+                            <div className="flex items-center gap-3 mb-5">
+                                <div className="w-10 h-10 rounded-xl bg-[#EDF5E8] text-[#607C3C] flex items-center justify-center font-bold">
+                                    <Recycle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-base text-[#192414] leading-tight">
+                                        Pesan Penjemputan Sampah
+                                    </h3>
+                                    <p className="text-[11px] text-[#7A8A70]">
+                                        {selectedServiceForOrder.name}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3.5 text-xs">
+                                <div className="p-3.5 rounded-2xl bg-[#F7F8F4] border border-[#E3EBD9] flex justify-between items-center">
+                                    <span className="font-medium text-[#7A8A70]">Biaya Layanan:</span>
+                                    <span className="font-black text-base text-[#607C3C]">
+                                        Rp {selectedServiceForOrder.price.toLocaleString('id-ID')}
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <label className="font-bold text-[#192414] block mb-1">
+                                        Alamat / Titik Penjemputan:
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={pickupAddress}
+                                        onChange={(e) => setPickupAddress(e.target.value)}
+                                        placeholder="Contoh: Cluster 05 Blok B No. 12"
+                                        className="w-full bg-[#F5F6F2] text-xs font-medium text-[#192414] p-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="font-bold text-[#192414] block mb-1">
+                                        Tanggal Penjemputan yang Diinginkan:
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={pickupDate}
+                                        onChange={(e) => setPickupDate(e.target.value)}
+                                        className="w-full bg-[#F5F6F2] text-xs font-medium text-[#192414] p-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="font-bold text-[#192414] block mb-1">
+                                        Catatan untuk Petugas (Opsional):
+                                    </label>
+                                    <textarea
+                                        value={orderNotes}
+                                        onChange={(e) => setOrderNotes(e.target.value)}
+                                        rows={2}
+                                        placeholder="Contoh: Sampah ranting sudah dimasukkan karung di samping pagar"
+                                        className="w-full bg-[#F5F6F2] text-xs font-medium text-[#192414] p-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-5 space-y-2">
+                                <button
+                                    type="button"
+                                    disabled={isOrdering}
+                                    onClick={handleOrderWasteService}
+                                    className="w-full py-3 px-4 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] active:scale-[0.99] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                                >
+                                    {isOrdering ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Memproses Pesanan...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <QrCode className="w-4 h-4" />
+                                            <span>Bayar Penjemputan (Midtrans QRIS)</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isOrdering}
+                                    onClick={() => setSelectedServiceForOrder(null)}
+                                    className="w-full py-2 rounded-xl text-xs font-bold text-[#7A8A70] hover:bg-[#F0F2EB] transition-colors"
+                                >
+                                    Batalkan
                                 </button>
                             </div>
                         </motion.div>

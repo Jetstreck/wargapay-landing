@@ -61,6 +61,19 @@ export interface WeatherData {
     wind_speed: number;
 }
 
+export interface ExpenseItem {
+    id: number;
+    title: string;
+    category: string;
+    amount: number;
+    vendor: string;
+    date: string;
+    description?: string;
+    receipt_ref?: string;
+    approved_by?: string;
+    created_at?: string;
+}
+
 // Token & Session Storage
 export const getStoredToken = (): string | null => {
     return localStorage.getItem('wargapay_token');
@@ -205,6 +218,46 @@ export const apiDeleteDues = async (id: number) => {
 };
 
 // ========================
+// EXPENSES (BUKU KAS RT) APIS
+// ========================
+export const apiGetExpenses = async (category?: string): Promise<ExpenseItem[]> => {
+    const qs = category && category !== 'Semua' ? `?category=${encodeURIComponent(category)}` : '';
+    const res = await request<{ message: string; data: ExpenseItem[] }>(`/expenses${qs}`);
+    return res.data || [];
+};
+
+export const apiCreateExpense = async (payload: {
+    title: string;
+    category: string;
+    amount: number;
+    vendor: string;
+    date: string;
+    description?: string;
+    receipt_ref?: string;
+    approved_by?: string;
+}): Promise<ExpenseItem> => {
+    const res = await request<{ message: string; data: ExpenseItem }>('/admin/expenses', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+    return res.data;
+};
+
+export const apiDeleteExpense = async (id: number) => {
+    return await request<{ message: string }>(`/admin/expenses/${id}`, {
+        method: 'DELETE',
+    });
+};
+
+// ========================
+// USERS (DATA WARGA) APIS
+// ========================
+export const apiGetUsers = async (): Promise<User[]> => {
+    const res = await request<{ message: string; data: User[] }>('/admin/users');
+    return res.data || [];
+};
+
+// ========================
 // TRANSACTIONS & MIDTRANS APIS
 // ========================
 export const apiCreateTransaction = async (payload: {
@@ -297,3 +350,4 @@ export const openMidtransSnap = (
         alert('Midtrans Snap tidak tersedia. Silakan gunakan tombol simulasi pembayaran.');
     }
 };
+

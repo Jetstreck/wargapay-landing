@@ -30,7 +30,16 @@ import {
     clearSession,
     apiGetTransactionReport,
     apiGetDues,
-    User
+    apiPayDuesManual,
+    apiGetExpenses,
+    apiCreateExpense,
+    apiGetUsers,
+    apiGetServices,
+    apiCreateService,
+    apiDeleteService,
+    User,
+    ExpenseItem,
+    WasteServiceItem
 } from '../services/api';
 
 interface AdminDashboardProps {
@@ -96,11 +105,75 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setTimeout(() => setToastMessage(null), 3000);
     };
 
+    // Backend Services State
+    const [backendServices, setBackendServices] = useState<WasteServiceItem[]>([]);
+    const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+    const [newServiceName, setNewServiceName] = useState('');
+    const [newServicePrice, setNewServicePrice] = useState('');
+    const [newServiceDesc, setNewServiceDesc] = useState('');
+
+    const fetchExpenses = async () => {
+        try {
+            const data = await apiGetExpenses();
+            if (data && data.length > 0) {
+                const mapped = data.map((exp: ExpenseItem) => ({
+                    id: `EXP-ADM-${exp.id}`,
+                    rawId: exp.id,
+                    title: exp.title,
+                    amount: `Rp ${exp.amount.toLocaleString('id-ID')}`,
+                    vendor: exp.vendor,
+                    category: exp.category,
+                    status: 'Tercatat di Database',
+                    date: exp.date,
+                    gdriveRef: exp.receipt_ref || `KW-${exp.id}`,
+                }));
+                setExpenseList(mapped);
+            }
+        } catch (e) {
+            console.log('Gagal fetch expenses di admin:', e);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const data = await apiGetUsers();
+            if (data && data.length > 0) {
+                const mapped = data.map((u: User, idx: number) => ({
+                    unit: `Cluster Blok ${String.fromCharCode(65 + (idx % 4))} No. ${String(idx + 1).padStart(2, '0')}`,
+                    head: u.name,
+                    members: 3,
+                    type: u.role === 'admin' ? 'Pengurus RT' : 'Warga Tetap',
+                    phone: u.email,
+                    iplStatus: 'Aktif Terdaftar',
+                    statusClass: 'bg-[#EDF5E8] text-[#2F611E] border-[#C5DCB6]'
+                }));
+                setResidentList(mapped);
+            }
+        } catch (e) {
+            console.log('Gagal fetch users di admin:', e);
+        }
+    };
+
+    const fetchServices = async () => {
+        try {
+            const data = await apiGetServices();
+            if (data && data.length > 0) {
+                setBackendServices(data);
+            }
+        } catch (e) {
+            console.log('Gagal fetch services di admin:', e);
+        }
+    };
+
     // Load backend data for Admin
     useEffect(() => {
         apiGetTransactionReport().then((rep) => {
             if (rep) setReportData(rep);
         }).catch(() => {});
+
+        fetchExpenses();
+        fetchUsers();
+        fetchServices();
 
         // Fetch Dues for Verification tab
         apiGetDues().then((dues) => {
@@ -338,7 +411,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     ]);
 
     // Handle Approve / Reject
-    const handleApprove = (id: string, resident: string) => {
+    const handleApprove = async (id: string, resident: string) => {
+        const rawId = parseInt(id.replace(/\D/g, ''), 10);
+        if (rawId) {
+            try {
+                await apiPayDuesManual(rawId);
+            } catch {
+                // local fallback
+            }
+        }
         setVerificationList(prev =>
             prev.map(item =>
                 item.id === id
@@ -369,27 +450,63 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
 
     // Handle add expense
-    const handleAddExpenseSubmit = (e: React.FormEvent) => {
+    const handleAddExpenseSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newExpenseName || !newExpenseAmount) return;
 
-        const newEntry = {
-            id: `EXP-ADM-${Date.now().toString().slice(-4)}`,
-            title: newExpenseName,
-            amount: newExpenseAmount.startsWith('Rp') ? newExpenseAmount : `Rp ${newExpenseAmount}`,
-            vendor: newExpenseVendor || 'Vendor Lokal Swadaya',
-            category: 'Operasional',
-            status: 'Bukti Nota Uploaded to GDrive',
-            date: 'Hari ini',
-            gdriveRef: 'GDrive/KasRT05/2024-10/Nota-Baru.pdf'
-        };
+        const rawAmount = parseInt(newExpenseAmount.replace(/\D/g, ''), 10) || 0;
+        try {
+            await apiCreateExpense({
+                title: newExpenseName,
+                category: 'Operasional',
+                amount: rawAmount,
+                vendor: newExpenseVendor || 'Vendor Mitra RT 05',
+                date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+                description: `Pencatatan pengeluaran kas RT oleh admin: ${newExpenseName}`,
+                receipt_ref: `KW-${Date.now().toString().slice(-6)}`,
+            });
+            fetchExpenses();
+            setNewExpenseName('');
+            setNewExpenseAmount('');
+            setNewExpenseVendor('');
+            setShowExpenseModal(false);
+            showToast('Pengeluaran kas berhasil disimpan ke database Supabase & disinkronkan!');
+        } catch (err: any) {
+            showToast(err.message || 'Gagal mencatat pengeluaran kas');
+        }
+    };
 
-        setExpenseList([newEntry, ...expenseList]);
-        setNewExpenseName('');
-        setNewExpenseAmount('');
-        setNewExpenseVendor('');
-        setShowExpenseModal(false);
-        showToast('Pengeluaran kas berhasil dicatat & disinkronisasi ke Google Drive RT 05');
+    // Handle add / delete waste service
+    const handleCreateServiceSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newServiceName || !newServicePrice) return;
+        const price = parseInt(newServicePrice.replace(/\D/g, ''), 10) || 0;
+        try {
+            await apiCreateService({
+                name: newServiceName,
+                description: newServiceDesc,
+                price: price,
+                is_active: true
+            });
+            fetchServices();
+            setNewServiceName('');
+            setNewServiceDesc('');
+            setNewServicePrice('');
+            setShowAddServiceModal(false);
+            showToast(`Layanan sampah "${newServiceName}" berhasil ditambahkan!`);
+        } catch (err: any) {
+            showToast(err.message || 'Gagal menambahkan layanan sampah');
+        }
+    };
+
+    const handleDeleteService = async (id: number, name: string) => {
+        try {
+            await apiDeleteService(id);
+            fetchServices();
+            showToast(`Layanan sampah "${name}" berhasil dihapus.`);
+        } catch (err: any) {
+            showToast(err.message || 'Gagal menghapus layanan sampah');
+        }
     };
 
     // Handle add resident
@@ -1213,6 +1330,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     </span>
                                 </div>
                             </div>
+
+                            {/* Manajemen Master Layanan Sampah dari Database */}
+                            <div className="pt-6 border-t border-[#F0F3EC] space-y-3.5">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-1 gap-2">
+                                    <div>
+                                        <h3 className="text-lg sm:text-xl font-black text-[#192414] tracking-tight">
+                                            Katalog & Tarif Layanan Sampah (Database Supabase)
+                                        </h3>
+                                        <p className="text-xs text-[#7A8A70]">
+                                            Kelola daftar layanan pengangkutan yang dapat dipesan warga secara online
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddServiceModal(true)}
+                                        className="px-4 py-2 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs self-start sm:self-auto"
+                                    >
+                                        <PlusCircle className="w-3.5 h-3.5" />
+                                        <span>+ Tambah Layanan Sampah</span>
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {backendServices.map((svc) => (
+                                        <div
+                                            key={svc.id}
+                                            className="p-4 sm:p-5 rounded-2xl bg-white border border-[#E5EBDD] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                                        >
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-extrabold text-sm sm:text-base text-[#192414]">{svc.name}</h4>
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]">
+                                                        {svc.is_active ? 'Aktif' : 'Non-Aktif'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-[#6E7F65] mt-1">{svc.description}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#F5F7F2]">
+                                                <span className="text-sm font-black text-[#607C3C]">
+                                                    Rp {svc.price.toLocaleString('id-ID')}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteService(svc.id, svc.name)}
+                                                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-[#A6461D] bg-[#FDF0E9] hover:bg-[#FBE4DD] transition-colors"
+                                                >
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1826,6 +1996,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         className="px-5 py-2 rounded-xl bg-[#607C3C] hover:bg-[#4E6730] text-xs font-bold text-white transition-colors"
                                     >
                                         Daftarkan Hunian
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* MODAL 5: TAMBAH LAYANAN SAMPAH KE DATABASE */}
+                {showAddServiceModal && (
+                    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.96 }}
+                            className="bg-white rounded-3xl max-w-md w-full border border-[#D2DBC5] shadow-2xl p-6 sm:p-7 relative"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setShowAddServiceModal(false)}
+                                className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-[#F0F2EB] text-[#7A8A70] transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+
+                            <h3 className="font-black text-base text-[#192414] mb-4">
+                                Tambah Layanan Sampah Baru
+                            </h3>
+
+                            <form onSubmit={handleCreateServiceSubmit} className="space-y-3.5 text-xs">
+                                <div>
+                                    <label className="font-bold text-[#192414] block mb-1">Nama Layanan:</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={newServiceName}
+                                        onChange={(e) => setNewServiceName(e.target.value)}
+                                        placeholder="Contoh: Sedot Limbah & Septic Tank"
+                                        className="w-full bg-[#F5F6F2] p-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="font-bold text-[#192414] block mb-1">Tarif Layanan (Rp):</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        value={newServicePrice}
+                                        onChange={(e) => setNewServicePrice(e.target.value)}
+                                        placeholder="Contoh: 75000"
+                                        className="w-full bg-[#F5F6F2] p-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="font-bold text-[#192414] block mb-1">Deskripsi & Ketentuan Layanan:</label>
+                                    <textarea
+                                        rows={3}
+                                        value={newServiceDesc}
+                                        onChange={(e) => setNewServiceDesc(e.target.value)}
+                                        placeholder="Keterangan singkat cakupan layanan yang akan ditampilkan pada dashboard warga..."
+                                        className="w-full bg-[#F5F6F2] p-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none"
+                                    />
+                                </div>
+                                <div className="mt-4 flex justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddServiceModal(false)}
+                                        className="px-4 py-2 rounded-xl text-[#7A8A70] hover:bg-[#F0F2EB] font-bold"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] text-white font-bold shadow-xs cursor-pointer"
+                                    >
+                                        Simpan ke Database Supabase
                                     </button>
                                 </div>
                             </form>
