@@ -269,6 +269,14 @@ export const apiGetUsers = async (): Promise<User[]> => {
     return res.data || [];
 };
 
+export const apiUpdateUserRole = async (userId: number, role: 'admin' | 'user'): Promise<User> => {
+    const res = await request<{ message: string; data: User }>(`/admin/users/${userId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role }),
+    });
+    return res.data;
+};
+
 // ========================
 // NOTIFICATIONS & REMINDERS APIS
 // ========================

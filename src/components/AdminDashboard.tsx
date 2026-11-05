@@ -30,6 +30,8 @@ import {
     clearSession,
     apiGetTransactionReport,
     apiGetDues,
+    apiCreateDues,
+    apiUpdateUserRole,
     apiPayDuesManual,
     apiGetExpenses,
     apiCreateExpense,
@@ -135,18 +137,52 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         }
     };
 
+    const [rawUsers, setRawUsers] = useState<User[]>([]);
+    const [billTargetUserId, setBillTargetUserId] = useState<number>(0);
+    const [billPeriod, setBillPeriod] = useState<string>('2026-11');
+    const [billWasteFee, setBillWasteFee] = useState<number>(35000);
+    const [billSecurityFee, setBillSecurityFee] = useState<number>(30000);
+    const [billRtFund, setBillRtFund] = useState<number>(20000);
+    const [isSubmittingBill, setIsSubmittingBill] = useState<boolean>(false);
+
+    const fetchDuesForVerification = async () => {
+        try {
+            const dues = await apiGetDues();
+            if (dues && dues.length > 0) {
+                const mapped: VerificationItem[] = dues.map((d: any, idx: number) => ({
+                    id: `VER-${String(idx + 1).padStart(3, '0')}`,
+                    rawDuesId: d.id,
+                    unit: `Cluster Blok B No. ${d.user_id + 10}`,
+                    resident: d.user_id === 1 ? 'Pengurus RT' : d.user_id === 2 ? 'Bpk. Budi' : d.user_id === 3 ? 'Ibu Siti' : `Warga (User #${d.user_id})`,
+                    amount: `Rp ${d.total.toLocaleString('id-ID')}`,
+                    method: d.status === 'paid' ? 'Midtrans VA / QRIS' : 'Bayar Tunai di Kantor RT',
+                    status: d.status === 'paid' ? 'AUTO VERIFIED' : 'BELUM LUNAS',
+                    badgeClass: d.status === 'paid' ? 'bg-[#EDF5E8] text-[#2F611E] border border-[#C5DCB6]' : 'bg-[#FFF8E7] text-[#9A6209] border border-[#F4DCAC]',
+                    date: d.period || '2026-11',
+                    receiptRef: `INV-${d.id}-${d.period}`,
+                }));
+                setVerificationList(mapped);
+            }
+        } catch (e) {
+            console.log('Gagal fetch dues verification:', e);
+        }
+    };
+
     const fetchUsers = async () => {
         try {
             const data = await apiGetUsers();
             if (data && data.length > 0) {
+                setRawUsers(data);
                 const mapped = data.map((u: User, idx: number) => ({
+                    id: u.id,
                     unit: `Cluster Blok ${String.fromCharCode(65 + (idx % 4))} No. ${String(idx + 1).padStart(2, '0')}`,
                     head: u.name,
                     members: 3,
-                    type: u.role === 'admin' ? 'Pengurus RT' : 'Warga Tetap',
+                    type: u.role === 'admin' ? 'Pengurus RT (Admin)' : 'Warga Tetap',
+                    role: u.role,
                     phone: u.email,
                     iplStatus: 'Aktif Terdaftar',
-                    statusClass: 'bg-[#EDF5E8] text-[#2F611E] border-[#C5DCB6]'
+                    statusClass: u.role === 'admin' ? 'bg-[#EDF5E8] text-[#2F611E] border-[#C5DCB6]' : 'bg-[#E7F0FA] text-[#245D99] border-[#BBD5EE]'
                 }));
                 setResidentList(mapped);
             }
@@ -413,6 +449,50 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     ]);
 
     // Handle manual cash payment
+    const handleToggleUserRole = async (targetItem: any) => {
+        const targetUserId = targetItem.id || (rawUsers.find(u => u.name === targetItem.head)?.id);
+        if (!targetUserId) {
+            showToast('User ID tidak ditemukan');
+            return;
+        }
+        const currentRole = targetItem.role || (targetItem.type?.includes('Admin') ? 'admin' : 'user');
+        const nextRole = currentRole === 'admin' ? 'user' : 'admin';
+        try {
+            await apiUpdateUserRole(targetUserId, nextRole);
+            showToast(`Role ${targetItem.head} berhasil diubah menjadi ${nextRole === 'admin' ? 'ADMIN' : 'WARGA'}!`);
+            await fetchUsers();
+        } catch (err: any) {
+            showToast(err.message || 'Gagal mengubah role pengguna');
+        }
+    };
+
+    const handleCreateDuesSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const targetId = Number(billTargetUserId);
+        if (!targetId || targetId <= 0) {
+            showToast('Silakan pilih warga penerima tagihan');
+            return;
+        }
+        try {
+            setIsSubmittingBill(true);
+            await apiCreateDues({
+                user_id: targetId,
+                period: billPeriod || '2026-11',
+                waste_fee: Number(billWasteFee) || 0,
+                security_fee: Number(billSecurityFee) || 0,
+                rt_fund: Number(billRtFund) || 0,
+            });
+            const targetUser = rawUsers.find(u => u.id === targetId);
+            showToast(`Tagihan IPL periode ${billPeriod} berhasil diterbitkan untuk ${targetUser?.name || 'warga'}!`);
+            setShowBillModal(false);
+            fetchDuesForVerification();
+        } catch (err: any) {
+            showToast(err.message || 'Gagal menerbitkan tagihan IPL');
+        } finally {
+            setIsSubmittingBill(false);
+        }
+    };
+
     const handleManualCashPay = async (item: VerificationItem) => {
         try {
             if (item.rawDuesId) {
@@ -1424,16 +1504,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#F5F7F2]">
-                                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-md border ${res.statusClass}`}>
-                                            IPL: {res.iplStatus}
-                                        </span>
+                                    <div className="flex flex-wrap items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#F5F7F2]">
                                         <button
                                             type="button"
-                                            onClick={() => showToast(`Detail data kependudukan ${res.unit} (${res.head})`)}
-                                            className="px-3 py-1.5 rounded-xl border border-[#D5DFC9] text-xs font-bold text-[#7A8A70] hover:text-[#192414] hover:bg-[#F5F6F2] transition-colors"
+                                            onClick={() => handleToggleUserRole(res)}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 cursor-pointer ${
+                                                (res as any).role === 'admin'
+                                                    ? 'bg-[#EDF5E8] text-[#2F611E] border-[#C5DCB6] hover:bg-[#E0EED6]'
+                                                    : 'bg-[#F4F6F1] text-[#7A8A70] border-[#D5DFC9] hover:bg-[#EAEFE5] hover:text-[#192414]'
+                                            }`}
+                                            title="Ubah role akun ini (Admin / Warga)"
                                         >
-                                            Detail Unit
+                                            <UserCheck className="w-3.5 h-3.5" />
+                                            <span>Role: {(res as any).role === 'admin' ? 'ADMIN' : 'WARGA'}</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const targetId = (res as any).id || (rawUsers.find(u => u.name === res.head)?.id) || 1;
+                                                setBillTargetUserId(targetId);
+                                                setShowBillModal(true);
+                                            }}
+                                            className="px-3 py-1.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] active:scale-98 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                                            title="Terbitkan tagihan IPL untuk warga ini"
+                                        >
+                                            <PlusCircle className="w-3.5 h-3.5" />
+                                            <span>+ Beri Tagihan</span>
                                         </button>
                                     </div>
                                 </div>
@@ -1651,7 +1748,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </AnimatePresence>
 
             {/* =========================================================================
-                MODAL 2: Buat Tagihan IPL Bulanan
+                MODAL 2: TERBITKAN TAGIHAN IPL KE WARGA
                ========================================================================= */}
             <AnimatePresence>
                 {showBillModal && (
@@ -1665,7 +1762,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setShowBillModal(false)}
-                                className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-[#F0F2EB] text-[#7A8A70] transition-colors"
+                                className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-[#F0F2EB] text-[#7A8A70] transition-colors cursor-pointer"
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -1676,54 +1773,111 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
                                 <div>
                                     <h3 className="font-black text-base text-[#192414]">
-                                        Generate Tagihan IPL Massal
+                                        Terbitkan Tagihan IPL Warga
                                     </h3>
                                     <p className="text-[11px] text-[#7A8A70]">
-                                        Periode: November 2024 (43 Unit Warga)
+                                        Berikan tagihan iuran baru kepada warga yang terdaftar
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="space-y-3 text-xs">
-                                <div className="p-3.5 rounded-2xl bg-[#F6F8F3] border border-[#D8E2D0] space-y-1.5">
-                                    <div className="flex justify-between">
-                                        <span className="text-[#7A8A70]">Target Hunian:</span>
-                                        <span className="font-bold text-[#192414]">43 Unit (Blok A, B, C)</span>
+                            <form onSubmit={handleCreateDuesSubmit} className="space-y-3.5 text-xs">
+                                <div>
+                                    <label className="font-bold text-[#192414] block mb-1">
+                                        Pilih Warga Penerima Tagihan:
+                                    </label>
+                                    <select
+                                        value={billTargetUserId}
+                                        onChange={(e) => setBillTargetUserId(Number(e.target.value))}
+                                        className="w-full bg-[#F5F6F2] text-xs font-semibold text-[#192414] p-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none cursor-pointer"
+                                        required
+                                    >
+                                        <option value={0}>-- Pilih Warga Terdaftar --</option>
+                                        {rawUsers.map((u) => (
+                                            <option key={u.id} value={u.id}>
+                                                [ID #{u.id}] {u.name} ({u.email}) - Role: {u.role}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="font-bold text-[#192414] block mb-1">
+                                        Periode Tagihan (Format YYYY-MM):
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={billPeriod}
+                                        onChange={(e) => setBillPeriod(e.target.value)}
+                                        placeholder="2026-11"
+                                        className="w-full bg-[#F5F6F2] text-xs font-semibold text-[#192414] p-2.5 rounded-xl border border-transparent focus:border-[#607C3C] focus:outline-none"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                        <label className="font-bold text-[#7A8A70] text-[10px] block mb-1">
+                                            Kebersihan (Rp)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={billWasteFee}
+                                            onChange={(e) => setBillWasteFee(Number(e.target.value))}
+                                            className="w-full bg-[#F5F6F2] text-xs font-bold text-[#192414] p-2 rounded-xl"
+                                            min={0}
+                                        />
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-[#7A8A70]">Tarif Dasar per Unit:</span>
-                                        <span className="font-bold text-[#607C3C]">Rp 450.000 / bulan</span>
+                                    <div>
+                                        <label className="font-bold text-[#7A8A70] text-[10px] block mb-1">
+                                            Keamanan (Rp)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={billSecurityFee}
+                                            onChange={(e) => setBillSecurityFee(Number(e.target.value))}
+                                            className="w-full bg-[#F5F6F2] text-xs font-bold text-[#192414] p-2 rounded-xl"
+                                            min={0}
+                                        />
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-[#7A8A70]">Batas Waktu Bayar:</span>
-                                        <span className="font-bold text-[#192414]">10 November 2024</span>
+                                    <div>
+                                        <label className="font-bold text-[#7A8A70] text-[10px] block mb-1">
+                                            Kas RT (Rp)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={billRtFund}
+                                            onChange={(e) => setBillRtFund(Number(e.target.value))}
+                                            className="w-full bg-[#F5F6F2] text-xs font-bold text-[#192414] p-2 rounded-xl"
+                                            min={0}
+                                        />
                                     </div>
                                 </div>
 
-                                <p className="text-[11px] text-[#6E7F65]">
-                                    Sistem akan otomatis menerbitkan nomor Virtual Account BCA baru untuk masing-masing unit dan mengirimkan notifikasi via WhatsApp bot RT 05.
-                                </p>
-                            </div>
+                                <div className="p-3 rounded-2xl bg-[#EDF5E8] border border-[#C5DCB6] flex justify-between items-center text-xs">
+                                    <span className="font-bold text-[#2F611E]">Total Tagihan:</span>
+                                    <span className="font-black text-sm text-[#2F611E]">
+                                        Rp {(Number(billWasteFee) + Number(billSecurityFee) + Number(billRtFund)).toLocaleString('id-ID')}
+                                    </span>
+                                </div>
 
-                            <div className="mt-5 flex items-center justify-end gap-2.5">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowBillModal(false)}
-                                    className="px-4 py-2 rounded-xl text-xs font-bold text-[#7A8A70] hover:bg-[#F0F2EB] transition-colors"
-                                >
-                                    Tutup
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        showToast('43 Tagihan IPL November 2024 berhasil diterbitkan & broadcast dikirim!');
-                                        setShowBillModal(false);
-                                    }}
-                                    className="px-5 py-2 rounded-xl bg-[#1A331E] hover:bg-[#25442A] text-xs font-bold text-white transition-colors"
-                                >
-                                    Terbitkan Sekarang
-                                </button>
-                            </div>
+                                <div className="mt-5 flex items-center justify-end gap-2.5 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowBillModal(false)}
+                                        className="px-4 py-2 rounded-xl text-xs font-bold text-[#7A8A70] hover:bg-[#F0F2EB] transition-colors cursor-pointer"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmittingBill}
+                                        className="px-5 py-2.5 rounded-xl bg-[#607C3C] hover:bg-[#4E6830] active:scale-98 text-xs font-bold text-white transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                                    >
+                                        {isSubmittingBill ? 'Menerbitkan...' : 'Terbitkan Tagihan IPL'}
+                                    </button>
+                                </div>
+                            </form>
                         </motion.div>
                     </div>
                 )}
