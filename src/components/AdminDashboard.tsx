@@ -1284,9 +1284,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     {filteredVerifications.length} Data
                                 </span>
                             </div>
-                            <span className="text-xs text-[#7A8A70] font-semibold hidden sm:inline">
-                                Verifikasi 1-Klik Otomatis
-                            </span>
                         </div>
 
                         {/* Full-Width Vertical Stack */}
