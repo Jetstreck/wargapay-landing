@@ -5,15 +5,31 @@ import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import ResidentDashboard from './components/ResidentDashboard';
 import AdminDashboard from './components/AdminDashboard';
-import { getStoredUser, clearSession, User } from './services/api';
+import { getStoredUser, getStoredToken, clearSession, User } from './services/api';
 
 function App() {
-    const [currentUser, setCurrentUser] = useState<User | null>(() => getStoredUser());
+    const [currentUser, setCurrentUser] = useState<User | null>(() => {
+        const token = getStoredToken();
+        const user = getStoredUser();
+        return token && user ? user : null;
+    });
+
     const [view, setView] = useState<'landing' | 'login' | 'dashboard' | 'admin'>(() => {
         if (typeof window !== 'undefined') {
             const hash = window.location.hash;
-            if (hash === '#admin') return 'admin';
-            if (hash === '#dashboard') return 'dashboard';
+            const token = getStoredToken();
+            const user = getStoredUser();
+            const isAuthenticated = !!(token && user);
+
+            if (hash === '#admin') {
+                if (!isAuthenticated) return 'login';
+                if (user?.role !== 'admin') return 'dashboard';
+                return 'admin';
+            }
+            if (hash === '#dashboard') {
+                if (!isAuthenticated) return 'login';
+                return 'dashboard';
+            }
             if (hash === '#login') return 'login';
         }
         return 'landing';
@@ -33,9 +49,30 @@ function App() {
         const handleHashChange = () => {
             resetViewport();
             const hash = window.location.hash;
+            const token = getStoredToken();
+            const user = getStoredUser();
+            const isAuthenticated = !!(token && user);
+
             if (hash === '#admin') {
+                if (!isAuthenticated) {
+                    setView('login');
+                    window.location.hash = '#login';
+                    return;
+                }
+                if (user?.role !== 'admin') {
+                    setView('dashboard');
+                    window.location.hash = '#dashboard';
+                    return;
+                }
+                setCurrentUser(user);
                 setView('admin');
             } else if (hash === '#dashboard') {
+                if (!isAuthenticated) {
+                    setView('login');
+                    window.location.hash = '#login';
+                    return;
+                }
+                setCurrentUser(user);
                 setView('dashboard');
             } else if (hash === '#login') {
                 setView('login');
@@ -95,7 +132,7 @@ function App() {
             <CustomCursor />
 
             {/* View 1: Admin Dashboard (Pengurus RT) */}
-            {view === 'admin' ? (
+            {view === 'admin' && currentUser && currentUser.role === 'admin' ? (
                 <AdminDashboard
                     key={currentUser?.email || 'admin'}
                     user={currentUser}
@@ -103,7 +140,7 @@ function App() {
                     onBackToHome={goToLanding}
                     onSwitchToResident={goToDashboard}
                 />
-            ) : view === 'dashboard' ? (
+            ) : view === 'dashboard' && currentUser ? (
                 /* View 2: Resident Dashboard (Warga) */
                 <ResidentDashboard
                     key={currentUser?.email || 'resident'}
@@ -111,7 +148,7 @@ function App() {
                     onLogout={handleLogout}
                     onBackToHome={goToLanding}
                 />
-            ) : view === 'login' ? (
+            ) : view === 'login' || ((view === 'admin' || view === 'dashboard') && !currentUser) ? (
                 /* View 3: Dedicated Login Page */
                 <LoginPage
                     onBackToHome={goToLanding}

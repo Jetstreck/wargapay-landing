@@ -28,6 +28,7 @@ import {
 import logoBrand from '../assets/logo-brand.jpg';
 import {
     getStoredUser,
+    getStoredToken,
     clearSession,
     apiGetTransactionReport,
     apiGetDues,
@@ -100,13 +101,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [reportData, setReportData] = useState<any>(null);
 
     useEffect(() => {
+        const token = getStoredToken();
+        const stored = getStoredUser();
+        const activeUser = user || stored;
+        if (!token || !activeUser || activeUser.role !== 'admin') {
+            if (onLogout) onLogout();
+            return;
+        }
+
         if (user) {
             setCurrentUser(user);
-        } else {
-            const stored = getStoredUser();
-            if (stored) setCurrentUser(stored);
+        } else if (stored) {
+            setCurrentUser(stored);
         }
-    }, [user]);
+    }, [user, onLogout]);
 
     const showToast = (msg: string) => {
         setToastMessage(msg);

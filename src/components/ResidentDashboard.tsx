@@ -31,6 +31,7 @@ import {
 import logoBrand from '../assets/logo-brand.jpg';
 import {
     getStoredUser,
+    getStoredToken,
     clearSession,
     apiGetDues,
     apiGetExpenses,
@@ -134,13 +135,19 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
     };
 
     useEffect(() => {
+        const token = getStoredToken();
+        const stored = getStoredUser();
+        if (!token || (!user && !stored)) {
+            if (onLogout) onLogout();
+            return;
+        }
+
         if (user) {
             setCurrentUser(user);
-        } else {
-            const stored = getStoredUser();
-            if (stored) setCurrentUser(stored);
+        } else if (stored) {
+            setCurrentUser(stored);
         }
-    }, [user]);
+    }, [user, onLogout]);
 
     const showToast = (msg: string) => {
         setToastMessage(msg);
